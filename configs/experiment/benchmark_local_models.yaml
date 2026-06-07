@@ -1,0 +1,10 @@
+name: benchmark_local_models
+mode: benchmark
+description: Benchmark multiple model backends on the same evaluation set.
+models_to_run:
+  - mock
+  # - hf_local
+  # - openai_compatible
+max_items: null
+write_predictions: true
+write_report: true

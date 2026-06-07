@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "seminar-item-reviser"
+version = "0.1.0"
+description = "Hydra-based research repository for an LLM item reviser agent for survey questionnaire design."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Seminar Item Reviser"}]
+dependencies = [
+    "hydra-core>=1.3.2",
+    "omegaconf>=2.3.0",
+    "pydantic>=2.5.0",
+    "rich>=13.7.0",
+    "tqdm>=4.66.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "requests>=2.31.0",
+    "pyyaml>=6.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.4.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
+]
+hf = [
+    "torch>=2.2.0",
+    "transformers>=4.41.0",
+    "accelerate>=0.30.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "scripts", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_configs = true

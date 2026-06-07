@@ -1,0 +1,9 @@
+name: hf_local
+backend: hf_local
+model_path: /dss/dssmcmlfs01/pn25ju/pn25ju-dss-0000/models/CHANGE_ME
+trust_remote_code: true
+device_map: auto
+torch_dtype: auto
+max_new_tokens: 768
+temperature: 0.0
+top_p: 1.0

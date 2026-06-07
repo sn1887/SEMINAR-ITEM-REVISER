@@ -1,0 +1,8 @@
+name: eval_200_seed
+path: data/eval/test_set_200_seed.jsonl
+format: jsonl
+id_field: id
+question_field: question
+response_options_field: response_options
+gold_errors_field: known_errors
+is_flawed_field: is_flawed

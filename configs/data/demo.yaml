@@ -1,0 +1,3 @@
+name: demo
+path: data/examples/demo_items.jsonl
+format: jsonl

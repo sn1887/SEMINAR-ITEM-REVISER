@@ -1,0 +1,5 @@
+name: mock
+backend: mock
+description: Deterministic no-LLM backend for smoke tests and CI.
+max_new_tokens: 512
+temperature: 0.0

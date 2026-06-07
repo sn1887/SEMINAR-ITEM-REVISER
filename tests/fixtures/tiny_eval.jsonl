@@ -1,0 +1,2 @@
+{"id": "tiny-1", "question": "Don\u2019t you agree that stricter environmental regulations are necessary?", "response_options": ["Strongly disagree", "Disagree", "Agree", "Strongly agree"], "known_errors": ["leading_question", "agree_disagree_scale"], "is_flawed": true}
+{"id": "tiny-2", "question": "How satisfied or dissatisfied are you with your current job?", "response_options": ["Very dissatisfied", "Somewhat dissatisfied", "Neither satisfied nor dissatisfied", "Somewhat satisfied", "Very satisfied"], "known_errors": [], "is_flawed": false}

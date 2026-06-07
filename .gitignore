@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.env
+
+# Hydra outputs
+outputs/
+multirun/
+
+# Large model artifacts
+models/
+*.safetensors
+*.bin
+*.pt
+*.ckpt
+
+# Local data scratch
+scratch/
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Editors
+.vscode/
+.idea/
+
+# OS
+.DS_Store

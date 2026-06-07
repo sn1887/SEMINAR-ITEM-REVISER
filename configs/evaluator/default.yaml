@@ -1,0 +1,10 @@
+name: default
+prediction_categories_from: detected_errors
+metrics:
+  - precision
+  - recall
+  - f1
+  - exact_match
+  - false_positive_rate_on_clean_items
+  - overcorrection_rate
+write_confusion_by_category: true

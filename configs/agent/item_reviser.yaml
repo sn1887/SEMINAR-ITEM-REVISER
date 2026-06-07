@@ -1,0 +1,20 @@
+name: item_reviser
+pipeline: item_quality_check_then_revision
+max_revision_rounds: 1
+use_llm_for_revision: false
+use_rule_checks: true
+return_json: true
+
+checks:
+  wording:
+    enabled: true
+  scale:
+    enabled: true
+  sensitive:
+    enabled: true
+
+revision:
+  preserve_target_concept: true
+  prefer_item_specific_scales: true
+  avoid_agree_disagree: true
+  avoid_overcorrection: true

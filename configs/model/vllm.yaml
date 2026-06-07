@@ -1,0 +1,9 @@
+name: vllm
+backend: openai_compatible
+base_url: http://localhost:8000/v1
+api_key_env: OPENAI_API_KEY
+model_name: CHANGE_ME
+max_new_tokens: 768
+temperature: 0.0
+timeout_seconds: 120
+notes: Start vLLM separately, then use this config as an OpenAI-compatible backend.

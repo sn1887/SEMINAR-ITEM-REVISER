@@ -1,0 +1,51 @@
+# Error taxonomy for the item-reviser project.
+# This file is a config-level mirror of src/item_reviser/constants.py.
+categories:
+  leading_question:
+    family: wording
+    description: Wording suggests a preferred answer.
+  loaded_question:
+    family: wording
+    description: Question presupposes something that may not be true.
+  double_barreled:
+    family: wording
+    description: One request asks about more than one concept.
+  recall_error:
+    family: wording
+    description: Reference period or task makes accurate recall unlikely.
+  vague_ambiguous:
+    family: wording
+    description: Key concepts are undefined, subjective, or unclear.
+  sensitive_topic_direct:
+    family: wording
+    description: Sensitive or socially desirable topic asked too directly.
+  social_desirability:
+    family: wording
+    description: Item likely encourages norm-conforming answers.
+  negative_wording:
+    family: wording
+    description: Negatives or double negatives may confuse respondents.
+  open_closed_mismatch:
+    family: structure
+    description: Open/closed format does not match the measurement goal.
+  agree_disagree_scale:
+    family: scale
+    description: Agree/disagree scale used where item-specific response options are preferable.
+  unbalanced_scale:
+    family: scale
+    description: Response options favor one side of the scale.
+  incomplete_options:
+    family: scale
+    description: Closed response options omit plausible categories.
+  non_exclusive_options:
+    family: scale
+    description: Single-choice response options overlap.
+  missing_scale_labels:
+    family: scale
+    description: Numeric scale lacks meaningful labels.
+  too_many_scale_points:
+    family: scale
+    description: Scale has more points than recommended for most survey contexts.
+  polarity_mismatch:
+    family: scale
+    description: Concept polarity and response scale polarity are misaligned.

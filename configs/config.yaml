@@ -1,0 +1,25 @@
+defaults:
+  - experiment: item_reviser_eval
+  - model: mock
+  - data: eval_200
+  - agent: item_reviser
+  - evaluator: default
+  - _self_
+
+project_name: seminar-item-reviser
+seed: 42
+
+paths:
+  root: ${hydra:runtime.cwd}
+  data_dir: ${paths.root}/data
+  output_dir: ${hydra:runtime.output_dir}
+  prompt_dir: ${paths.root}/prompts
+
+hydra:
+  job:
+    chdir: false
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  sweep:
+    dir: multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra.job.num}

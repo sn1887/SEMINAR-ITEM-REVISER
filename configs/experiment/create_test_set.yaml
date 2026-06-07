@@ -1,0 +1,6 @@
+name: create_test_set
+mode: create_test_set
+description: Regenerate or extend synthetic test data. Manual review still required.
+num_items: 200
+seed: 42
+output_path: data/eval/test_set_200_seed.jsonl

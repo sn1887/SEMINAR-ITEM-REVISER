@@ -1,0 +1,11 @@
+name: full_pipeline_stub
+pipeline: concept_to_revised_item
+components:
+  - concept_mapper
+  - assertion_developer
+  - question_developer
+  - quality_checker
+  - item_reviser
+max_revision_rounds: 2
+use_rule_checks: true
+use_llm_for_revision: true
