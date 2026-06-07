@@ -19,6 +19,28 @@ ERROR_CATEGORIES = [
     "polarity_mismatch",
 ]
 
+DATASET_SCHEMA_VERSION = "1.0.0"
+
+CATEGORY_SEVERITY_WEIGHTS_BY_CATEGORY = {
+    "leading_question": 1.0,
+    "loaded_question": 1.0,
+    "double_barreled": 1.0,
+    "recall_error": 0.7,
+    "vague_ambiguous": 0.7,
+    "sensitive_topic_direct": 0.7,
+    "social_desirability": 0.7,
+    "negative_wording": 0.7,
+    "open_closed_mismatch": 0.4,
+    "agree_disagree_scale": 0.7,
+    "unbalanced_scale": 0.7,
+    "incomplete_options": 0.7,
+    "non_exclusive_options": 0.4,
+    "missing_scale_labels": 0.4,
+    "too_many_scale_points": 0.4,
+    "polarity_mismatch": 0.4,
+}
+
+
 CATEGORY_DESCRIPTIONS = {
     "leading_question": "Wording suggests a preferred answer.",
     "loaded_question": "Question presupposes something that may not be true.",

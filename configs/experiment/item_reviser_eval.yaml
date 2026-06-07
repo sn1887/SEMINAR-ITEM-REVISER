@@ -4,3 +4,4 @@ description: Run the item-reviser pipeline on the 200-item seed evaluation set.
 write_predictions: true
 write_report: true
 max_items: null
+severity_weighted_scoring: true

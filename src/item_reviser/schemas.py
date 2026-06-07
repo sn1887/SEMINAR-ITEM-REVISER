@@ -18,6 +18,9 @@ class SurveyItem:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "SurveyItem":
+        expected_revision = data.get("expected_revision", {})
+        if not isinstance(expected_revision, dict):
+            expected_revision = {"question": "", "response_options": []}
         return cls(
             id=str(data.get("id", "adhoc")),
             question=str(data.get("question", "")),
@@ -26,9 +29,17 @@ class SurveyItem:
             topic=data.get("topic"),
             known_errors=list(data.get("known_errors") or []),
             is_flawed=data.get("is_flawed"),
-            expected_revision=dict(data.get("expected_revision") or {}),
+            expected_revision=expected_revision,
             metadata=dict(data.get("metadata") or {}),
         )
+
+    def needs_manual_review(self) -> bool:
+        value = self.metadata.get("needs_manual_review", False)
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "y"}
+        return bool(value)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

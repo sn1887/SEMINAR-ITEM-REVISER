@@ -15,6 +15,12 @@ paths:
   output_dir: ${hydra:runtime.output_dir}
   prompt_dir: ${paths.root}/prompts
 
+tracking:
+  enabled: true
+  tracking_uri: null
+  experiment_name: seminar-item-reviser
+  run_name: null
+
 hydra:
   job:
     chdir: false
