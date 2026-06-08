@@ -14,8 +14,6 @@ The repository follows a research-lab style setup:
 - Evaluation produces machine-readable predictions, metrics, and a human-readable report.
 - Seminar progress documentation is integrated under `docs/` and `reports/`.
 
-> Note: "DeepMind style" here means a reproducible, configuration-first, modular research repository pattern. It is not an official DeepMind template.
-
 ---
 
 ## 1. What this project does
