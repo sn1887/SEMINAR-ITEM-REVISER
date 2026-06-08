@@ -145,28 +145,3 @@ python scripts/evaluate.py \
 The repository does **not** assume one fixed model because the seminar may benchmark multiple local models later.
 
 ---
-
-## 5. Evaluation target for next week
-
-For the next meeting, the key progress target is:
-
-- show that the repo runs end-to-end,
-- explain the 200-item evaluation/test set design,
-- report baseline metrics with `model=mock`,
-- list open questions for Bolei and Caro.
-
-Use:
-
-```bash
-python scripts/evaluate.py experiment=item_reviser_eval model=mock
-```
-
-Then summarize the generated `report.md` in `reports/progress_next_week_template.md`.
-
----
-
-## 6. Important caveat about the included 200-item set
-
-`data/eval/test_set_200_seed.jsonl` is a **seed evaluation set**, not a final gold standard. It is useful for pipeline development and initial reporting, but it should be manually audited before being treated as the final seminar evaluation set.
-
-Recommended next step: review 20–30 items with Caro/Bolei, agree on taxonomy boundaries, then finalize the 200 items.
