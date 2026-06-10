@@ -18,6 +18,7 @@ def run_evaluation(
     data_path: str | Path,
     output_dir: str | Path,
     model: BaseLLM,
+    prompt_config: object,
     max_items: int | None = None,
     write_predictions: bool = True,
     write_report: bool = True,
@@ -30,7 +31,7 @@ def run_evaluation(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     items, dataset_metadata = load_eval_dataset_with_metadata(data_path, max_items=max_items)
-    pipeline = ItemReviserPipeline(model=model)
+    pipeline = ItemReviserPipeline(model=model, prompt_config=prompt_config)
 
     results = []
     for item in tqdm(items, desc="Evaluating", unit="item"):

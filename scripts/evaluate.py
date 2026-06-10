@@ -112,6 +112,10 @@ def _run_mlflow_tracking(cfg: DictConfig, metrics: dict[str, Any], output_dir: P
         OmegaConf.to_container(cfg.get("tracking", {}), resolve=True),
         prefix="tracking",
     )
+    prompt_cfg = _flatten_params(
+        OmegaConf.to_container(cfg.get("prompt", {}), resolve=True),
+        prefix="prompt",
+    )
     dataset_cfg = _flatten_params(metrics.get("dataset", {}), prefix="dataset")
 
     run_name = cfg.get("tracking", {}).get("run_name")
@@ -121,6 +125,7 @@ def _run_mlflow_tracking(cfg: DictConfig, metrics: dict[str, Any], output_dir: P
         mlflow.log_params(data_cfg)
         mlflow.log_params(experiment_cfg)
         mlflow.log_params(tracking_cfg)
+        mlflow.log_params(prompt_cfg)
         mlflow.log_params(dataset_cfg)
         mlflow.log_metrics(_flatten_scalars(metrics))
         if output_dir.exists():
@@ -136,6 +141,7 @@ def main(cfg: DictConfig) -> None:
         data_path=cfg.data.path,
         output_dir=cfg.paths.output_dir,
         model=model,
+        prompt_config=cfg.prompt,
         max_items=max_items,
         write_predictions=bool(cfg.experiment.get("write_predictions", True)),
         write_report=bool(cfg.experiment.get("write_report", True)),

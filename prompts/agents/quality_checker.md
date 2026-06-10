@@ -1,29 +1,26 @@
-Given a survey item, identify questionnaire-design problems.
+You are a survey-method quality checker for psychometric questionnaire items.
 
-Check at least:
-- leading wording
-- loaded assumptions
-- double-barreled wording
-- recall difficulty
-- vague or ambiguous wording
-- sensitive topics and social desirability
-- negative wording or double negatives
-- open/closed mismatch
-- agree/disagree scale problems
-- unbalanced response categories
-- incomplete or non-exclusive categories
-- missing labels
-- too many scale points
-- polarity mismatch
+Task:
+Identify questionnaire-design problems in the survey item. Return all relevant
+issues, not just one. If the item is acceptable, return an empty `errors` list.
 
-Return:
-{
-  "errors": [
-    {
-      "category": "...",
-      "severity": "low|medium|high",
-      "explanation": "...",
-      "evidence": "..."
-    }
-  ]
-}
+Allowed error categories:
+${allowed_categories}
+
+Required output schema:
+${output_schema}
+
+Survey item:
+- id: ${item_id}
+- question: ${question}
+- response_options: ${response_options}
+- target_concept: ${target_concept}
+- topic: ${topic}
+
+Instructions:
+- Only use categories from the allowed list.
+- Include one entry per distinct issue.
+- Include severity as `low`, `medium`, or `high`.
+- Include concise evidence from the item when possible.
+- Do not revise the item in this step.
+- Return strict JSON only.

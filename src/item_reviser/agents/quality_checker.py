@@ -1,41 +1,39 @@
 from __future__ import annotations
 
+import json
+
 from item_reviser.agents.base import BaseAgent
-from item_reviser.constants import ERROR_CATEGORIES
+from item_reviser.constants import CATEGORY_DESCRIPTIONS, ERROR_CATEGORIES
 from item_reviser.models.base import CHECKER_OUTPUT_SCHEMA, BaseLLM
+from item_reviser.prompting import AgentPromptConfig
 from item_reviser.schemas import CheckResult, SurveyItem
 
 
 class QualityCheckerAgent(BaseAgent):
     """LLM-backed quality checker for questionnaire-design problems."""
 
-    def __init__(self, model: BaseLLM) -> None:
+    def __init__(self, model: BaseLLM, prompt_config: object) -> None:
         if model is None:
             raise ValueError("QualityCheckerAgent requires an LLM model.")
         super().__init__(model=model)
-        self._prompt_template = (
-            "You are a survey-method quality checker for psychometric survey items.\n"
-            "Given a survey item, return JSON matching this schema exactly:\n"
-            f"{CHECKER_OUTPUT_SCHEMA}\n"
-            "Only include error categories from this allowed list:\n"
-            f"{', '.join(sorted(ERROR_CATEGORIES))}.\n"
-            "Each detected issue should include category, severity, explanation, and optional evidence/suggestion.\n"
-        )
+        self.prompt_config = AgentPromptConfig.from_config(prompt_config)
 
     def check(self, item: SurveyItem) -> list[CheckResult]:
-        prompt = (
-            f"{self._prompt_template}\n\n"
-            "Item:\n"
-            f"question: {item.question}\n"
-            f"response_options: {item.response_options}\n"
-            f"target_concept: {item.target_concept or 'unknown'}\n"
-            f"topic: {item.topic or 'unknown'}\n"
-            "Return JSON with one entry per detected issue.\n"
+        prompt = self.prompt_config.render(
+            {
+                "allowed_categories": _format_allowed_categories(),
+                "output_schema": CHECKER_OUTPUT_SCHEMA,
+                "item_id": item.id,
+                "question": item.question,
+                "response_options": item.response_options,
+                "target_concept": item.target_concept or "unknown",
+                "topic": item.topic or "unknown",
+            }
         )
         payload = self.model.complete_checker_output(
             prompt,
-            max_retries=3,
-            timeout_seconds=120.0,
+            max_retries=self.prompt_config.max_retries,
+            timeout_seconds=self.prompt_config.timeout_seconds,
         )
 
         raw_errors = payload.get("errors", [])
@@ -69,3 +67,14 @@ class QualityCheckerAgent(BaseAgent):
             )
 
         return parsed
+
+
+def _format_allowed_categories() -> str:
+    rows = [
+        {
+            "category": category,
+            "description": CATEGORY_DESCRIPTIONS.get(category, ""),
+        }
+        for category in ERROR_CATEGORIES
+    ]
+    return json.dumps(rows, ensure_ascii=False, indent=2)

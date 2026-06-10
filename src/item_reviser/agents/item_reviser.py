@@ -1,54 +1,46 @@
 from __future__ import annotations
 
+import json
+
 from item_reviser.agents.base import BaseAgent
-from item_reviser.constants import ERROR_CATEGORIES
+from item_reviser.constants import CATEGORY_DESCRIPTIONS, ERROR_CATEGORIES
 from item_reviser.models.base import BaseLLM, REVISER_OUTPUT_SCHEMA
+from item_reviser.prompting import AgentPromptConfig
 from item_reviser.schemas import CheckResult, RevisedItem, SurveyItem
 
 
 class ItemReviserAgent(BaseAgent):
     """LLM-backed item reviser."""
 
-    def __init__(self, model: BaseLLM) -> None:
+    def __init__(self, model: BaseLLM, prompt_config: object) -> None:
         if model is None:
             raise ValueError("ItemReviserAgent requires an LLM model.")
         super().__init__(model=model)
-        self._prompt_template = (
-            "You are a survey-revision assistant.\n"
-            "Revise the item to fix quality issues in the JSON schema shown below.\n"
-            "Do not add explanations outside JSON.\n"
-            f"{REVISER_OUTPUT_SCHEMA}\n"
-            "Allowed error categories: "
-            + ", ".join(sorted(ERROR_CATEGORIES))
-            + "\n"
-        )
+        self.prompt_config = AgentPromptConfig.from_config(prompt_config)
 
     def revise(self, item: SurveyItem, errors: list[CheckResult]) -> RevisedItem:
         prompt = self._build_reviser_prompt(item, errors)
         payload = self.model.complete_reviser_output(
             prompt,
-            max_retries=3,
-            timeout_seconds=120.0,
+            max_retries=self.prompt_config.max_retries,
+            timeout_seconds=self.prompt_config.timeout_seconds,
         )
         return self._from_payload(item, payload)
 
     def _build_reviser_prompt(self, item: SurveyItem, errors: list[CheckResult]) -> str:
         categories = sorted({e.category for e in errors})
-        notes = (
-            [f"- {error.category}: {error.explanation}" for error in errors]
-            if errors
-            else ["No detected issues."]
-        )
-        return (
-            f"{self._prompt_template}\n"
-            "Context:\n"
-            f"question: {item.question}\n"
-            f"response_options: {item.response_options}\n"
-            f"target_concept: {item.target_concept or 'unknown'}\n"
-            f"topic: {item.topic or 'unknown'}\n"
-            f"detected_categories: {categories}\n"
-            "Known issues:\n"
-            + "\n".join(notes)
+        return self.prompt_config.render(
+            {
+                "allowed_categories": _format_allowed_categories(),
+                "output_schema": REVISER_OUTPUT_SCHEMA,
+                "item_id": item.id,
+                "question": item.question,
+                "response_options": item.response_options,
+                "target_concept": item.target_concept or "unknown",
+                "topic": item.topic or "unknown",
+                "detected_categories": categories,
+                "detected_issues": [error.to_dict() for error in errors],
+            }
         )
 
     @staticmethod
@@ -69,3 +61,14 @@ class ItemReviserAgent(BaseAgent):
             revision_notes=[str(note) for note in revision_notes],
             changed=changed,
         )
+
+
+def _format_allowed_categories() -> str:
+    rows = [
+        {
+            "category": category,
+            "description": CATEGORY_DESCRIPTIONS.get(category, ""),
+        }
+        for category in ERROR_CATEGORIES
+    ]
+    return json.dumps(rows, ensure_ascii=False, indent=2)

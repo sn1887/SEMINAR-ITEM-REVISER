@@ -15,6 +15,20 @@ from item_reviser.models.base import BaseLLM  # noqa: E402
 from item_reviser.schemas import SurveyItem  # noqa: E402
 
 
+SMOKE_PROMPT_CONFIG = {
+    "quality_checker": {
+        "template": "Check this item and return detected issues: ${question}",
+        "max_retries": 2,
+        "timeout_seconds": 10,
+    },
+    "item_reviser": {
+        "template": "Revise this item using these detected issues: ${detected_issues}",
+        "max_retries": 2,
+        "timeout_seconds": 10,
+    },
+}
+
+
 class SmokeLLM(BaseLLM):
     backend_name = "smoke"
 
@@ -63,7 +77,10 @@ class SmokeLLM(BaseLLM):
 
 def main() -> None:
     item = SurveyItem(question="Don’t you agree that stricter environmental regulations are necessary?")
-    result = ItemReviserPipeline(model=SmokeLLM()).run(item)
+    result = ItemReviserPipeline(
+        model=SmokeLLM(),
+        prompt_config=SMOKE_PROMPT_CONFIG,
+    ).run(item)
     assert "leading_question" in result.predicted_categories()
     print("Smoke test passed.")
 

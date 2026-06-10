@@ -15,7 +15,7 @@ The design supports three phases:
 The repo follows a configuration-first research workflow inspired by large lab ML repositories:
 
 - Every experiment is launched through Hydra config.
-- All hyperparameters, model paths, data paths, and agent choices are declared in YAML.
+- All hyperparameters, model paths, data paths, prompt choices, and agent choices are declared in YAML.
 - Scripts are thin entrypoints; research logic lives in `src/item_reviser`.
 - Outputs are written to timestamped experiment directories.
 - The dataset schema is explicit and versionable.
@@ -28,6 +28,7 @@ src/item_reviser/
 ├── agents/       # Agent classes: quality checker, reviser, pipeline controller
 ├── evaluation/   # Dataset loading, metrics, report generation
 ├── models/       # HF local and OpenAI-compatible model backends
+├── prompting.py  # Prompt-template loading and rendering
 ├── schemas.py    # Typed dataclasses for items, checks, revisions
 └── utils.py      # Small utilities
 ```
@@ -43,9 +44,18 @@ Hydra makes it easy to run:
 ```bash
 python scripts/evaluate.py model=hf_local model.model_path=/path/to/model
 python scripts/evaluate.py model=hf_local model.decoding.method=sampling model.decoding.temperature=0.7
+python scripts/evaluate.py prompt.quality_checker.template_path=prompts/agents/quality_checker.md
 ```
 
-This is useful because model choice should remain flexible. The model should be an experimental variable, not a code edit.
+This is useful because model choice, decoding, and prompt versions should remain
+experimental variables, not code edits.
+
+## Prompt registry
+
+The active prompt registry is declared under `configs/prompt/`. Prompt bodies stay
+in Markdown files under `prompts/agents/`, while config controls template paths,
+retry count, and timeout per agent. This keeps prompts easy to edit and ensures
+Hydra records the prompt setup in every run directory.
 
 ## Expected next-week progress
 

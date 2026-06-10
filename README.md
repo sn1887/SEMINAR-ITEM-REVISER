@@ -9,6 +9,7 @@ The repository follows a research-lab style setup:
 - Hydra configuration for every experiment.
 - Immutable experiment outputs saved under `outputs/` by Hydra.
 - Model backends are swappable through config, not hard-coded paths.
+- Agent prompts are selected through config and stored as editable Markdown templates.
 - A 200-item synthetic seed evaluation set is included under `data/eval/test_set_200_seed.jsonl`.
 - Evaluation produces machine-readable predictions, metrics, and a human-readable report.
 - Seminar progress documentation is integrated under `docs/` and `reports/`.
@@ -45,9 +46,10 @@ The agent should return:
 The current implementation is an **LLM-agent evaluation scaffold**:
 
 1. configurable LLM model interface,
-2. quality-checking agent,
-3. item-revision agent,
-4. evaluation pipeline.
+2. configurable prompt registry,
+3. quality-checking agent,
+4. item-revision agent,
+5. evaluation pipeline.
 
 The design is set up for benchmarking local LRZ models and OpenAI-compatible local servers.
 
@@ -149,3 +151,33 @@ python scripts/evaluate.py \
 The repository does **not** assume one fixed model because the seminar may benchmark multiple local models later.
 
 ---
+
+## 5. Prompt configuration
+
+Prompt bodies live in Markdown files under `prompts/`, while Hydra chooses which
+template each agent uses:
+
+```yaml
+prompt:
+  quality_checker:
+    template_path: ${paths.prompt_dir}/agents/quality_checker.md
+    max_retries: 3
+    timeout_seconds: 120
+  item_reviser:
+    template_path: ${paths.prompt_dir}/agents/item_reviser.md
+    max_retries: 3
+    timeout_seconds: 120
+```
+
+This makes prompt versions easy to compare:
+
+```bash
+python scripts/evaluate.py \
+  model=hf_local \
+  model.model_path=/path/to/model \
+  prompt.quality_checker.template_path=prompts/agents/quality_checker.md
+```
+
+Prompt templates use simple `$placeholder` substitution for fields such as
+`${question}`, `${response_options}`, `${allowed_categories}`, and
+`${detected_issues}`.

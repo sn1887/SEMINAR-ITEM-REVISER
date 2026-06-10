@@ -1,0 +1,11 @@
+name: default
+
+quality_checker:
+  template_path: ${paths.prompt_dir}/agents/quality_checker.md
+  max_retries: 3
+  timeout_seconds: 120
+
+item_reviser:
+  template_path: ${paths.prompt_dir}/agents/item_reviser.md
+  max_retries: 3
+  timeout_seconds: 120

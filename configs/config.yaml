@@ -4,6 +4,7 @@ defaults:
   - data: eval_200
   - agent: item_reviser
   - evaluator: default
+  - prompt: default
   - _self_
 
 project_name: seminar-item-reviser

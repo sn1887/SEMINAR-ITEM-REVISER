@@ -7,6 +7,20 @@ from item_reviser.models.base import BaseLLM
 from item_reviser.schemas import SurveyItem
 
 
+TEST_PROMPT_CONFIG = {
+    "quality_checker": {
+        "template": "Check this item: ${question}",
+        "max_retries": 2,
+        "timeout_seconds": 10,
+    },
+    "item_reviser": {
+        "template": "Revise this item: ${question}\nIssues: ${detected_issues}",
+        "max_retries": 2,
+        "timeout_seconds": 10,
+    },
+}
+
+
 class QueueLLM(BaseLLM):
     backend_name = "queue"
 
@@ -54,7 +68,7 @@ def test_llm_pipeline_detects_and_revises_item():
     )
     item = SurveyItem(question="Don't you agree that stricter rules are needed?")
 
-    result = ItemReviserPipeline(model=model).run(item)
+    result = ItemReviserPipeline(model=model, prompt_config=TEST_PROMPT_CONFIG).run(item)
 
     assert result.predicted_categories() == ["leading_question"]
     assert result.revised_item.changed is True
@@ -63,4 +77,7 @@ def test_llm_pipeline_detects_and_revises_item():
 
 def test_pipeline_requires_model():
     with pytest.raises(ValueError, match="requires an LLM model"):
-        ItemReviserPipeline(model=None)  # type: ignore[arg-type]
+        ItemReviserPipeline(  # type: ignore[arg-type]
+            model=None,
+            prompt_config=TEST_PROMPT_CONFIG,
+        )
