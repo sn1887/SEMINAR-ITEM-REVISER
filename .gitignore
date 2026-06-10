@@ -12,7 +12,7 @@ logs/
 mlruns/
 
 # Large model artifacts
-models/
+/models/
 *.safetensors
 *.bin
 *.pt
