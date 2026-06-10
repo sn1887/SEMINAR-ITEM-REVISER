@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import os
 import json
+import os
+import sys
 from pathlib import Path
 from typing import Any
-import sys
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -12,13 +12,13 @@ SRC_DIR = REPO_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-import hydra
-from omegaconf import DictConfig, OmegaConf
-from rich import print_json
+import hydra  # noqa: E402
+from omegaconf import DictConfig, OmegaConf  # noqa: E402
+from rich import print_json  # noqa: E402
 
-from item_reviser.evaluation.runner import run_evaluation
-from item_reviser.models.factory import build_model
-from item_reviser.utils import set_seed
+from item_reviser.evaluation.runner import run_evaluation  # noqa: E402
+from item_reviser.models.factory import build_model  # noqa: E402
+from item_reviser.utils import set_seed  # noqa: E402
 
 
 def _flatten_scalars(
@@ -74,20 +74,45 @@ def _run_mlflow_tracking(cfg: DictConfig, metrics: dict[str, Any], output_dir: P
             f"file://{Path(cfg.paths.root).resolve() / 'mlruns'}",
         )
 
+    tracking_uri = str(tracking_uri)
+    if tracking_uri.startswith("file://") or "://" not in tracking_uri:
+        os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
+        tracking_path = (
+            Path(tracking_uri.removeprefix("file://"))
+            if tracking_uri.startswith("file://")
+            else Path(tracking_uri)
+        )
+        tracking_path.mkdir(parents=True, exist_ok=True)
+
     try:
         import mlflow
     except Exception:
-        print("MLflow is enabled but not installed. Install with `pip install -e .[mlflow]` or `pip install -e .[hf]` if mlflow was added there.")
+        print(
+            "MLflow is enabled but not installed. Install with "
+            "`pip install -e .[mlflow]` or `pip install -e .[hf]`."
+        )
         return
 
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(cfg.get("tracking", {}).get("experiment_name", "seminar-item-reviser"))
 
-    model_cfg = _flatten_params(OmegaConf.to_container(cfg.get("model", {}), resolve=True))
-    data_cfg = _flatten_params(OmegaConf.to_container(cfg.get("data", {}), resolve=True))
-    experiment_cfg = _flatten_params(OmegaConf.to_container(cfg.get("experiment", {}), resolve=True))
-    tracking_cfg = _flatten_params(OmegaConf.to_container(cfg.get("tracking", {}), resolve=True))
-    dataset_cfg = _flatten_params(metrics.get("dataset", {}))
+    model_cfg = _flatten_params(
+        OmegaConf.to_container(cfg.get("model", {}), resolve=True),
+        prefix="model",
+    )
+    data_cfg = _flatten_params(
+        OmegaConf.to_container(cfg.get("data", {}), resolve=True),
+        prefix="data",
+    )
+    experiment_cfg = _flatten_params(
+        OmegaConf.to_container(cfg.get("experiment", {}), resolve=True),
+        prefix="experiment",
+    )
+    tracking_cfg = _flatten_params(
+        OmegaConf.to_container(cfg.get("tracking", {}), resolve=True),
+        prefix="tracking",
+    )
+    dataset_cfg = _flatten_params(metrics.get("dataset", {}), prefix="dataset")
 
     run_name = cfg.get("tracking", {}).get("run_name")
     with mlflow.start_run(run_name=run_name):

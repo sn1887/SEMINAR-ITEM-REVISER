@@ -52,7 +52,7 @@ class CheckResult:
     explanation: str
     evidence: str | None = None
     suggestion: str | None = None
-    checker: str = "rule"
+    checker: str = "llm"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

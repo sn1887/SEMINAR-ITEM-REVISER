@@ -83,19 +83,12 @@ For each model output, rate:
 
 ## Recommended evaluation protocol
 
-1. Run deterministic baseline.
-2. Run at least one local LLM.
-3. Compare model outputs on the same 200 items.
-4. Manually inspect 30–50 outputs.
-5. Report automatic metrics plus qualitative examples.
+1. Run at least one local LLM.
+2. Compare model outputs on the same 200 items.
+3. Manually inspect 30–50 outputs.
+4. Report automatic metrics plus qualitative examples.
 
 ## Commands
-
-```bash
-python scripts/evaluate.py experiment=item_reviser_eval model=mock
-```
-
-Later, for a local model:
 
 ```bash
 python scripts/evaluate.py \

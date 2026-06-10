@@ -19,10 +19,11 @@ format:
 	ruff format src scripts tests
 
 smoke:
-	python scripts/run_item_reviser.py item.question="Don’t you agree that stricter environmental regulations are necessary?"
+	python scripts/smoke_test.py
 
 eval:
-	python scripts/evaluate.py experiment=item_reviser_eval model=mock
+	test -n "$(MODEL_PATH)" || (echo "Set MODEL_PATH=/path/to/local/hf/model" && exit 1)
+	python scripts/evaluate.py experiment=item_reviser_eval model=hf_local model.model_path="$(MODEL_PATH)"
 
 clean:
 	rm -rf outputs multirun .pytest_cache .ruff_cache .mypy_cache build dist *.egg-info

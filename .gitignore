@@ -8,6 +8,8 @@ __pycache__/
 # Hydra outputs
 outputs/
 multirun/
+logs/
+mlruns/
 
 # Large model artifacts
 models/
@@ -26,6 +28,9 @@ data/processed/*
 # Editors
 .vscode/
 .idea/
+
+# Local presentation / meeting materials
+seminar-material/
 
 # OS
 .DS_Store

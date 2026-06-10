@@ -4,6 +4,14 @@ model_path: /dss/dssmcmlfs01/pn25ju/pn25ju-dss-0000/models/CHANGE_ME
 trust_remote_code: true
 device_map: auto
 torch_dtype: auto
-max_new_tokens: 768
-temperature: 0.0
-top_p: 1.0
+timeout_seconds: 120
+
+# Supported methods: greedy, sampling, beam_search, beam_sample.
+decoding:
+  method: greedy
+  max_new_tokens: 768
+  temperature: 0.0
+  top_p: 1.0
+  top_k: null
+  num_beams: 1
+  repetition_penalty: null

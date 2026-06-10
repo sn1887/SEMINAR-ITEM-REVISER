@@ -1,9 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from collections import Counter
+from pathlib import Path
 
-from item_reviser.evaluation.dataset import load_eval_dataset_with_metadata
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SRC_DIR = REPO_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+from item_reviser.evaluation.dataset import load_eval_dataset_with_metadata  # noqa: E402
 
 
 def main() -> None:

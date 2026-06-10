@@ -17,12 +17,15 @@ from item_reviser.models.base import BaseLLM
 def run_evaluation(
     data_path: str | Path,
     output_dir: str | Path,
-    model: BaseLLM | None = None,
+    model: BaseLLM,
     max_items: int | None = None,
     write_predictions: bool = True,
     write_report: bool = True,
     use_severity_weighted_scoring: bool = False,
 ) -> dict[str, Any]:
+    if model is None:
+        raise ValueError("run_evaluation requires an LLM model.")
+
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 

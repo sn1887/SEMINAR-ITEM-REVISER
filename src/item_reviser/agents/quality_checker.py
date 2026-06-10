@@ -1,20 +1,17 @@
 from __future__ import annotations
 
-from item_reviser.constants import ERROR_CATEGORIES
 from item_reviser.agents.base import BaseAgent
-from item_reviser.checks.registry import run_all_checks
+from item_reviser.constants import ERROR_CATEGORIES
 from item_reviser.models.base import CHECKER_OUTPUT_SCHEMA, BaseLLM
 from item_reviser.schemas import CheckResult, SurveyItem
 
 
 class QualityCheckerAgent(BaseAgent):
-    """Hybrid quality checker.
+    """LLM-backed quality checker for questionnaire-design problems."""
 
-    Current baseline uses deterministic checks. The LLM model is held here so later
-    work can add LLM validation or LLM-only checks without changing evaluation code.
-    """
-
-    def __init__(self, model: BaseLLM | None = None) -> None:
+    def __init__(self, model: BaseLLM) -> None:
+        if model is None:
+            raise ValueError("QualityCheckerAgent requires an LLM model.")
         super().__init__(model=model)
         self._prompt_template = (
             "You are a survey-method quality checker for psychometric survey items.\n"
@@ -26,10 +23,6 @@ class QualityCheckerAgent(BaseAgent):
         )
 
     def check(self, item: SurveyItem) -> list[CheckResult]:
-        fallback = run_all_checks(item)
-        if self.model is None:
-            return fallback
-
         prompt = (
             f"{self._prompt_template}\n\n"
             "Item:\n"
@@ -39,18 +32,15 @@ class QualityCheckerAgent(BaseAgent):
             f"topic: {item.topic or 'unknown'}\n"
             "Return JSON with one entry per detected issue.\n"
         )
-        try:
-            payload = self.model.complete_checker_output(
-                prompt,
-                max_retries=3,
-                timeout_seconds=120.0,
-            )
-        except Exception:
-            return fallback
+        payload = self.model.complete_checker_output(
+            prompt,
+            max_retries=3,
+            timeout_seconds=120.0,
+        )
 
         raw_errors = payload.get("errors", [])
         if not isinstance(raw_errors, list):
-            return fallback
+            raise ValueError("Checker model returned a non-list 'errors' field.")
 
         parsed: list[CheckResult] = []
         for item_error in raw_errors:
@@ -78,6 +68,4 @@ class QualityCheckerAgent(BaseAgent):
                 )
             )
 
-        if not parsed:
-            return fallback
         return parsed

@@ -11,7 +11,8 @@ Rules:
 
 Return:
 {
-  "revised_question": "...",
-  "revised_response_options": ["..."],
-  "revision_notes": ["..."]
+  "question": "...",
+  "response_options": ["..."],
+  "revision_notes": ["..."],
+  "changed": true
 }

@@ -32,13 +32,13 @@ Before each meeting:
 - LRZ login works.
 - Shared storage access has been verified.
 - Repository is designed to keep model paths flexible.
-- Mock backend runs locally without GPUs.
+- Local schema/control-flow smoke test runs without GPUs.
 
 ## Completed tasks
 
 - Created Hydra-based repo structure.
 - Added 200-item seed evaluation set.
-- Added deterministic baseline checks.
+- Added LLM-backed quality-checking and revision agents.
 - Added evaluation runner and report generation.
 
 ## Issues or blockers
@@ -50,7 +50,7 @@ Before each meeting:
 
 1. Which local model should be used first for the initial benchmark?
 2. Should the final evaluation include only local open-source models, or also API models?
-3. Is it acceptable to use a rule-based baseline as one comparison system?
+3. Should decoding settings be fixed across models for fairness?
 
 ## Decisions made
 
@@ -82,7 +82,7 @@ The planned LLM prompt asks the model to:
 4. avoid overcorrecting items that are already valid,
 5. preserve the target concept.
 
-A deterministic baseline is included so that evaluation can begin before GPU/model decisions are finalized.
+Evaluation now targets the LLM agents directly, so GPU/model decisions are part of the experimental setup.
 
 ## Questions for Bolei and Caro
 
@@ -115,7 +115,7 @@ A deterministic baseline is included so that evaluation can begin before GPU/mod
 
 ## Evaluation criteria or metrics
 
-Automatic baseline metrics:
+Automatic model metrics:
 
 - category-level precision,
 - category-level recall,

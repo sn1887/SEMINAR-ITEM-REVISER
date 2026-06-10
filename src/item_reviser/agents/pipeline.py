@@ -7,7 +7,9 @@ from item_reviser.schemas import PipelineResult, SurveyItem
 
 
 class ItemReviserPipeline:
-    def __init__(self, model: BaseLLM | None = None) -> None:
+    def __init__(self, model: BaseLLM) -> None:
+        if model is None:
+            raise ValueError("ItemReviserPipeline requires an LLM model.")
         self.quality_checker = QualityCheckerAgent(model=model)
         self.item_reviser = ItemReviserAgent(model=model)
 

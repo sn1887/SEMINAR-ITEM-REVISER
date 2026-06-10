@@ -1,17 +1,9 @@
 name: item_reviser
 pipeline: item_quality_check_then_revision
 max_revision_rounds: 1
-use_llm_for_revision: false
-use_rule_checks: true
+use_llm_for_quality_checking: true
+use_llm_for_revision: true
 return_json: true
-
-checks:
-  wording:
-    enabled: true
-  scale:
-    enabled: true
-  sensitive:
-    enabled: true
 
 revision:
   preserve_target_concept: true

@@ -7,5 +7,5 @@ components:
   - quality_checker
   - item_reviser
 max_revision_rounds: 2
-use_rule_checks: true
+use_llm_for_quality_checking: true
 use_llm_for_revision: true

@@ -40,16 +40,6 @@ def _build_runs(phase: str, model_root: str) -> list[BenchmarkRun]:
     smoke = [
         BenchmarkRun(
             "smoke",
-            "smoke__mock",
-            "mock",
-            None,
-            5,
-            "smoke__mock_5",
-            "item_reviser_benchmark_smoke",
-            420,
-        ),
-        BenchmarkRun(
-            "smoke",
             "smoke__hf",
             "Qwen2.5-1.5B-Instruct",
             f"{model_root}/Qwen2.5-1.5B-Instruct",
@@ -255,15 +245,12 @@ def _build_command(
     if max_items != "all" and max_items is not None:
         args.append(f"experiment.max_items={max_items}")
 
-    if run.model_label == "mock":
-        args.append("model=mock")
-    else:
-        args.extend(
-            [
-                "model=hf_local",
-                f"model.model_path={run.model_path}",
-            ]
-        )
+    args.extend(
+        [
+            "model=hf_local",
+            f"model.model_path={run.model_path}",
+        ]
+    )
     if warmup:
         args.extend(
             [
@@ -318,6 +305,7 @@ def _run_once(
     if existing_pythonpath:
         runtime_paths.append(existing_pythonpath)
     child_env["PYTHONPATH"] = os.pathsep.join(runtime_paths)
+    child_env["MLFLOW_ALLOW_FILE_STORE"] = "true"
 
     run_name = run.run_name
     attempt_run_id = f"{run_name}__{'warmup' if is_warmup else f'attempt_{attempt}'}"
@@ -406,7 +394,7 @@ def run_phase(
             max_items_override=1,
             warmup=True,
         )
-        _run_once(
+        warmup_success, warmup_status = _run_once(
             run=run,
             log_file=run_log,
             args=warmup_cmd,
@@ -416,6 +404,9 @@ def run_phase(
             phase_name=run.phase,
             is_warmup=True,
         )
+        if not warmup_success:
+            statuses.append({**warmup_status, "status": "failed", "reason": "warmup_failed"})
+            continue
 
         success = False
         last_status: dict[str, Any] = {
@@ -444,6 +435,9 @@ def run_phase(
             if success:
                 last_status["status"] = "success"
                 break
+            if last_status.get("return_code") == 124:
+                last_status = {**last_status, "reason": "timeout"}
+                break
             if attempt < attempts:
                 time.sleep(min(2.0 * attempt, 10.0))
 
@@ -461,7 +455,7 @@ def main() -> None:
         choices=["smoke", "shortlist-5", "shortlist-20", "full-200", "vision-20", "all"],
     )
     parser.add_argument("--model-root", default=DEFAULT_MODEL_ROOT)
-    parser.add_argument("--attempts", type=int, default=2)
+    parser.add_argument("--attempts", type=int, default=1)
     parser.add_argument("--timeout", type=int, default=1800)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--no-resume", action="store_false", dest="resume")

@@ -1,6 +1,6 @@
 defaults:
   - experiment: item_reviser_eval
-  - model: mock
+  - model: hf_local
   - data: eval_200
   - agent: item_reviser
   - evaluator: default

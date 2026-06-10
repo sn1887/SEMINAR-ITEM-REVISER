@@ -9,7 +9,6 @@ The repository follows a research-lab style setup:
 - Hydra configuration for every experiment.
 - Immutable experiment outputs saved under `outputs/` by Hydra.
 - Model backends are swappable through config, not hard-coded paths.
-- A deterministic `mock` backend is included for smoke tests and CI.
 - A 200-item synthetic seed evaluation set is included under `data/eval/test_set_200_seed.jsonl`.
 - Evaluation produces machine-readable predictions, metrics, and a human-readable report.
 - Seminar progress documentation is integrated under `docs/` and `reports/`.
@@ -43,14 +42,14 @@ The agent should return:
 }
 ```
 
-The current implementation is a **hybrid baseline**:
+The current implementation is an **LLM-agent evaluation scaffold**:
 
-1. deterministic rule-based quality checks,
-2. configurable LLM model interface,
-3. item revision component,
+1. configurable LLM model interface,
+2. quality-checking agent,
+3. item-revision agent,
 4. evaluation pipeline.
 
-The design is intentionally ready for replacing the mock model with local models on LRZ.
+The design is set up for benchmarking local LRZ models and OpenAI-compatible local servers.
 
 ---
 
@@ -86,18 +85,19 @@ source .venv/bin/activate
 pip install -e '.[dev]'
 ```
 
-Run a smoke test with the deterministic mock backend:
+Run the local control-flow smoke test:
 
 ```bash
-python scripts/run_item_reviser.py \
-  item.question="Don’t you agree that stricter environmental regulations are necessary?" \
-  item.response_options='["Strongly disagree", "Disagree", "Agree", "Strongly agree"]'
+python scripts/smoke_test.py
 ```
 
 Evaluate the included 200-item seed set:
 
 ```bash
-python scripts/evaluate.py experiment=item_reviser_eval model=mock
+python scripts/evaluate.py \
+  experiment=item_reviser_eval \
+  model=hf_local \
+  model.model_path=/dss/dssmcmlfs01/pn25ju/pn25ju-dss-0000/models/YOUR_MODEL
 ```
 
 Hydra will create an experiment directory such as:
@@ -117,18 +117,24 @@ outputs/2026-06-06/12-00-00/
 
 ## 4. Flexible local model setup
 
-The baseline uses:
-
-```bash
-python scripts/evaluate.py model=mock
-```
-
 For a local Hugging Face model path:
 
 ```bash
 python scripts/evaluate.py \
   model=hf_local \
-  model.model_path=/dss/dssmcmlfs01/pn25ju/pn25ju-dss-0000/models/YOUR_MODEL
+  model.model_path=/dss/dssmcmlfs01/pn25ju/pn25ju-dss-0000/models/YOUR_MODEL \
+  model.decoding.method=greedy
+```
+
+Supported local-HF decoding methods are `greedy`, `sampling`, `beam_search`, and `beam_sample`. For example:
+
+```bash
+python scripts/evaluate.py \
+  model=hf_local \
+  model.model_path=/dss/dssmcmlfs01/pn25ju/pn25ju-dss-0000/models/YOUR_MODEL \
+  model.decoding.method=sampling \
+  model.decoding.temperature=0.7 \
+  model.decoding.top_p=0.9
 ```
 
 For a local vLLM/OpenAI-compatible server:
