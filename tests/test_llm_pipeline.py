@@ -27,6 +27,7 @@ class QueueLLM(BaseLLM):
     def __init__(self, responses: list[dict[str, object]]) -> None:
         super().__init__()
         self.responses = list(responses)
+        self.calls = 0
 
     def generate(
         self,
@@ -36,6 +37,7 @@ class QueueLLM(BaseLLM):
         **kwargs,
     ) -> str:
         _ = prompt, timeout_seconds, kwargs
+        self.calls += 1
         return json.dumps(self.responses.pop(0))
 
 
@@ -73,6 +75,9 @@ def test_llm_pipeline_detects_and_revises_item():
     assert result.predicted_categories() == ["leading_question"]
     assert result.revised_item.changed is True
     assert "support or oppose" in result.revised_item.question
+    assert result.orchestration_trace is None
+    assert "orchestration" not in result.to_dict()
+    assert model.calls == 2
 
 
 def test_pipeline_requires_model():

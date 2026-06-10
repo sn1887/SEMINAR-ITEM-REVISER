@@ -5,6 +5,7 @@ defaults:
   - agent: item_reviser
   - evaluator: default
   - prompt: default
+  - orchestration: default
   - _self_
 
 project_name: seminar-item-reviser

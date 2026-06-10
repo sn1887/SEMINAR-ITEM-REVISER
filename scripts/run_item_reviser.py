@@ -37,7 +37,11 @@ def main(cfg: DictConfig) -> None:
     )
     if not item.question:
         item.question = "Don’t you agree that stricter environmental regulations are necessary?"
-    result = ItemReviserPipeline(model=model, prompt_config=cfg.prompt).run(item)
+    result = ItemReviserPipeline(
+        model=model,
+        prompt_config=cfg.prompt,
+        orchestration_config=cfg.get("orchestration"),
+    ).run(item)
     print_json(data=result.to_dict())
 
 

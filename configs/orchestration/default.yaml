@@ -1,0 +1,52 @@
+enabled: false
+strategy: single_specialist
+multi_label_strategy: fallback
+confidence_threshold: 0.7
+retry_budget: 1
+
+taxonomy_labels:
+  - leading_question
+  - loaded_question
+  - double_barreled
+  - recall_error
+  - vague_ambiguous
+  - sensitive_topic_direct
+  - social_desirability
+  - negative_wording
+  - open_closed_mismatch
+  - agree_disagree_scale
+  - unbalanced_scale
+  - incomplete_options
+  - non_exclusive_options
+  - missing_scale_labels
+  - too_many_scale_points
+  - polarity_mismatch
+
+specialist_families:
+  leading_question: wording_clarity
+  loaded_question: wording_clarity
+  double_barreled: construct_alignment
+  recall_error: wording_clarity
+  vague_ambiguous: wording_clarity
+  sensitive_topic_direct: bias_sensitivity
+  social_desirability: bias_sensitivity
+  negative_wording: wording_clarity
+  open_closed_mismatch: questionnaire_format
+  agree_disagree_scale: response_options_scale
+  unbalanced_scale: response_options_scale
+  incomplete_options: response_options_scale
+  non_exclusive_options: response_options_scale
+  missing_scale_labels: response_options_scale
+  too_many_scale_points: response_options_scale
+  polarity_mismatch: response_options_scale
+
+agent_prompt_names:
+  router: router
+  planner: revision_planner
+  fallback: fallback_reviser
+  validator: validator
+  wording_clarity: wording_clarity
+  response_options_scale: response_options_scale
+  construct_alignment: construct_alignment
+  bias_sensitivity: bias_sensitivity
+  questionnaire_format: questionnaire_format

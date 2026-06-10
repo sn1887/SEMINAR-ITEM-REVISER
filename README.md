@@ -181,3 +181,34 @@ python scripts/evaluate.py \
 Prompt templates use simple `$placeholder` substitution for fields such as
 `${question}`, `${response_options}`, `${allowed_categories}`, and
 `${detected_issues}`.
+
+---
+
+## 6. Optional LLM orchestration
+
+The default behavior remains the original single-pass LLM quality-checker plus
+LLM reviser. The full router, planner, specialist, fallback, validator, and
+bounded-retry workflow is opt-in:
+
+```bash
+python scripts/run_item_reviser.py orchestration.enabled=true
+```
+
+For evaluation:
+
+```bash
+python scripts/evaluate.py \
+  model=hf_local \
+  model.model_path=/path/to/model \
+  orchestration.enabled=true
+```
+
+Orchestration behavior is configured in `configs/orchestration/default.yaml`.
+Agent prompt slots live in `configs/prompt/default.yaml` and point to Markdown
+templates under `prompts/agents/`, including `router`, `revision_planner`,
+`fallback_reviser`, the five specialist families, and `validator`.
+
+When enabled, prediction rows include an `orchestration_trace` plus flattened
+evaluation fields for route, router decision, taxonomy labels, confidence,
+selected agent, retry count, validation status, and final status. See
+`docs/orchestration_usage.md` for the full config and prompt customization guide.

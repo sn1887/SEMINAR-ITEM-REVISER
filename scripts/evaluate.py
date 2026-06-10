@@ -142,6 +142,7 @@ def main(cfg: DictConfig) -> None:
         output_dir=cfg.paths.output_dir,
         model=model,
         prompt_config=cfg.prompt,
+        orchestration_config=cfg.get("orchestration"),
         max_items=max_items,
         write_predictions=bool(cfg.experiment.get("write_predictions", True)),
         write_report=bool(cfg.experiment.get("write_report", True)),
