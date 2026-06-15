@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+from item_reviser.agents.orchestration import REVISION_PLAN_OUTPUT_SCHEMA
 from item_reviser.models.base import BaseLLM, REVISER_OUTPUT_SCHEMA
 from item_reviser.models.hf_local import HuggingFaceLocalModel
 
@@ -48,6 +49,37 @@ def test_complete_json_retries_with_repair_prompt():
 
     assert result["question"] == "Q?"
     assert model.calls == 2
+
+
+class NullFieldLLM(BaseLLM):
+    backend_name = "null_field"
+
+    def generate(
+        self,
+        prompt: str,
+        *,
+        timeout_seconds: float | None = None,
+        **kwargs,
+    ) -> str:
+        _ = prompt, timeout_seconds, kwargs
+        return (
+            '{"repair_family":"fallback","selected_agent":"fallback_reviser",'
+            '"instructions":[],"fallback_reason":null,"rationale":"Use fallback."}'
+        )
+
+
+def test_complete_json_accepts_nullable_optional_string_fields():
+    model = NullFieldLLM()
+
+    result = model.complete_json(
+        "Return a revision plan.",
+        REVISION_PLAN_OUTPUT_SCHEMA,
+        max_retries=1,
+        retry_delay_seconds=0,
+    )
+
+    assert result["repair_family"] == "fallback"
+    assert result["fallback_reason"] is None
 
 
 def test_hf_sampling_decoding_configures_generation_kwargs():

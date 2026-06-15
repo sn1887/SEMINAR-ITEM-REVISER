@@ -4,6 +4,21 @@ multi_label_strategy: fallback
 confidence_threshold: 0.7
 retry_budget: 1
 
+routing:
+  low_confidence_action: fallback
+  unknown_label_action: fallback
+  router_fallback_action: fallback
+  contradictory_accept_action: fallback
+  missing_taxonomy_action: fallback
+  unsupported_family_action: fallback
+  multi_label_action: fallback
+  mixed_family_action: fallback
+
+validation:
+  enabled: true
+  validate_accept_path: true
+  accept_failure_action: fallback
+
 taxonomy_labels:
   - leading_question
   - loaded_question

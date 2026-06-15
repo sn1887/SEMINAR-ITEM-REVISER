@@ -3,6 +3,9 @@ pipeline: item_quality_check_then_revision
 max_revision_rounds: 1
 use_llm_for_quality_checking: true
 use_llm_for_revision: true
+skip_revision_when_no_errors: true
+unchanged_revision_notes:
+  - No issues detected; item left unchanged.
 return_json: true
 
 revision:

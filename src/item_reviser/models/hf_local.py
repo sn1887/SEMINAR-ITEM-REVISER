@@ -55,32 +55,64 @@ class HuggingFaceLocalModel(BaseLLM):
         self.top_k = top_k
         self.num_beams = num_beams
         self.repetition_penalty = repetition_penalty
-        self._pipeline = None
+        self._model = None
         self._tokenizer = None
+        self._processor = None
+        self._is_multimodal = False
 
     def _load_pipeline(self) -> None:
-        if self._pipeline is not None:
+        if self._model is not None:
             return
-        from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+        from transformers import AutoConfig
 
-        dtype = _parse_torch_dtype(self.torch_dtype)
-        tokenizer = AutoTokenizer.from_pretrained(
+        config = AutoConfig.from_pretrained(
             self.model_path,
             trust_remote_code=self.trust_remote_code,
         )
+        dtype = _parse_torch_dtype(self.torch_dtype)
         model_kwargs: dict[str, Any] = {
             "trust_remote_code": self.trust_remote_code,
             "torch_dtype": dtype,
         }
         if self.device_map:
             model_kwargs["device_map"] = self.device_map
-        model = AutoModelForCausalLM.from_pretrained(self.model_path, **model_kwargs)
-        self._tokenizer = tokenizer
-        self._pipeline = pipeline(
-            "text-generation",
-            model=model,
-            tokenizer=tokenizer,
+        architecture = (getattr(config, "architectures", []) or [""])[0]
+        model_type = getattr(config, "model_type", "")
+
+        if model_type == "qwen3_5" or "ConditionalGeneration" in architecture:
+            from transformers import AutoModelForImageTextToText, AutoProcessor
+
+            self._processor = AutoProcessor.from_pretrained(
+                self.model_path,
+                trust_remote_code=self.trust_remote_code,
+            )
+            self._model = AutoModelForImageTextToText.from_pretrained(
+                self.model_path,
+                **model_kwargs,
+            )
+            self._is_multimodal = True
+            return
+
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        self._tokenizer = AutoTokenizer.from_pretrained(
+            self.model_path,
+            trust_remote_code=self.trust_remote_code,
         )
+        self._model = AutoModelForCausalLM.from_pretrained(self.model_path, **model_kwargs)
+        self._is_multimodal = False
+
+    def _input_device(self) -> Any:
+        if self._model is None:
+            raise RuntimeError("Model has not been loaded.")
+        return next(self._model.parameters()).device
+
+    def _eos_token_id(self) -> int | None:
+        if self._tokenizer is not None:
+            return self._tokenizer.eos_token_id
+        if self._processor is not None and hasattr(self._processor, "tokenizer"):
+            return self._processor.tokenizer.eos_token_id
+        return None
 
     def generate(
         self,
@@ -115,9 +147,7 @@ class HuggingFaceLocalModel(BaseLLM):
 
         generation_kwargs: dict[str, Any] = {
             "max_new_tokens": max_tokens,
-            "eos_token_id": self._tokenizer.eos_token_id
-            if self._tokenizer is not None
-            else None,
+            "eos_token_id": self._eos_token_id(),
         }
 
         if method in {"greedy", "deterministic"}:
@@ -156,10 +186,42 @@ class HuggingFaceLocalModel(BaseLLM):
         if effective_repetition_penalty is not None:
             generation_kwargs["repetition_penalty"] = effective_repetition_penalty
 
-        outputs = self._pipeline(prompt, **generation_kwargs)
-        if not outputs:
-            return ""
-        text = outputs[0].get("generated_text", "")
-        if text.startswith(prompt):
-            text = text[len(prompt) :]
+        if self._is_multimodal:
+            messages = [
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": prompt}],
+                }
+            ]
+            rendered_prompt = self._processor.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=False,
+            )
+            inputs = self._processor(text=[rendered_prompt], return_tensors="pt")
+        else:
+            inputs = self._tokenizer(prompt, return_tensors="pt")
+
+        device = self._input_device()
+        inputs = {
+            key: value.to(device) if hasattr(value, "to") else value
+            for key, value in inputs.items()
+        }
+        outputs = self._model.generate(**inputs, **generation_kwargs)
+        prompt_length = inputs["input_ids"].shape[1]
+        generated_ids = outputs[:, prompt_length:]
+
+        if self._is_multimodal:
+            text = self._processor.batch_decode(
+                generated_ids,
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=False,
+            )[0]
+        else:
+            text = self._tokenizer.batch_decode(
+                generated_ids,
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=False,
+            )[0]
         return text.strip()

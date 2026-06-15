@@ -36,6 +36,14 @@ Important fields:
 - `taxonomy_labels`: the supported issue labels.
 - `specialist_families`: maps taxonomy labels to specialist families.
 - `agent_prompt_names`: maps orchestration roles to prompt config keys.
+- `routing.*`: policy switches for low confidence, unknown labels, router
+  fallback decisions, contradictory accept outputs, missing taxonomy labels,
+  unsupported families, multi-label fallback, and mixed-family fallback.
+- `validation.enabled`: toggles validator calls for revision candidates.
+- `validation.validate_accept_path`: controls whether accepted items are also
+  passed through the validator.
+- `validation.accept_failure_action`: chooses whether a rejected accept-path
+  item goes to `fallback` or direct `manual_review`.
 
 Example:
 
@@ -46,7 +54,22 @@ orchestration:
   retry_budget: 1
   strategy: single_specialist
   multi_label_strategy: fallback
+  routing:
+    low_confidence_action: fallback
+    multi_label_action: fallback
+  validation:
+    enabled: true
+    validate_accept_path: true
+    accept_failure_action: fallback
 ```
+
+The baseline non-orchestrated pipeline also has Hydra runtime controls in
+`configs/agent/item_reviser.yaml`:
+
+- `use_llm_for_quality_checking`
+- `use_llm_for_revision`
+- `skip_revision_when_no_errors`
+- `unchanged_revision_notes`
 
 ## Prompt Customization
 
@@ -85,9 +108,10 @@ Common placeholders include:
 
 The router can return `accept`, `revise`, or `fallback`.
 
-Fallback is selected for low confidence, unknown labels, mixed labels by default,
+Fallback is still the default for low confidence, unknown labels, mixed labels,
 unsupported families, contradictory router output, and explicit fallback
-recommendations. A single supported label routes through the planner to the
+recommendations, but those route choices can now be changed from config without
+touching Python. A single supported label routes through the planner to the
 configured specialist family.
 
 The validator can return:
@@ -96,6 +120,9 @@ The validator can return:
 - `retry`: retry through the revision path while retry budget remains.
 - `manual_review`: final output is flagged for manual review.
 - `failed`: treated as manual review unless a retry is available.
+
+When validation is disabled through config, traces record
+`validation_status=skipped`.
 
 ## Trace Output
 

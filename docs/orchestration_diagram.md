@@ -1,109 +1,117 @@
 # Item Reviser Orchestration Diagram
 
-This diagram sketches the proposed LLM-agent orchestration for the item-reviser pipeline.
-The core idea is to avoid a brittle single-label router and instead use a multi-label
-quality check, a revision plan, targeted revision, and verification.
+This document is the canonical target architecture for the LLM-agent orchestration
+system in the item-reviser pipeline. The implementation may be delivered in phases,
+but those phases are incremental steps toward this full workflow, not separate MVP
+architectures.
 
 ```mermaid
 flowchart TD
-    A[Survey Item] --> B[Quality Checker Agent]
+    A[Survey Item] --> B[Router / Quality Checker Agent]
 
-    B --> C{Issue Decision}
-    C -->|No issue / low risk| D[Leave Unchanged Candidate]
-    C -->|One or more issues| E[Revision Planner Agent]
+    B --> C{Route Decision}
+    C -->|Accept: no revision needed| D[Leave Item Unchanged]
+    C -->|Low confidence or mixed issues| E[General Fallback Reviser]
+    C -->|Supported taxonomy issue| F[Revision Planner]
 
-    E --> F[Revision Plan]
-    F --> G{Needed Repair Families}
+    F --> G{Repair Family}
+    G -->|Wording / clarity| H[Wording Specialist]
+    G -->|Response options / scale| I[Scale Specialist]
+    G -->|Construct alignment| J[Construct Specialist]
+    G -->|Bias / sensitivity| K[Sensitivity Specialist]
+    G -->|Questionnaire format| L[Format Specialist]
+    G -->|Unsupported or conflicting labels| E
 
-    G -->|Wording| H[Wording Revision Skill]
-    G -->|Scale / Options| I[Scale Revision Skill]
-    G -->|Sensitive / Social Desirability| J[Sensitivity Revision Skill]
-    G -->|Construct Risk| K[Construct Preservation Check]
-
-    H --> L[Final Item Reviser Agent]
-    I --> L
-    J --> L
-    K --> L
-    D --> M[Revision Verifier Agent]
+    H --> M[Candidate Revision]
+    I --> M
+    J --> M
+    K --> M
     L --> M
+    E --> M
+    D --> N[Validator / Critic Agent]
+    M --> N
 
-    M --> N{Verifier Decision}
-    N -->|Pass| O[Final Output]
-    N -->|Fail, retry budget remains| E
-    N -->|Fail, retry budget exhausted| P[Manual Review Flag]
+    N --> O{Validation Decision}
+    O -->|Pass| P[Final Output]
+    O -->|Retry budget remains| F
+    O -->|Retry exhausted or unsafe| Q[Manual Review Flag]
 
-    O --> Q[Evaluation Record]
-    P --> Q
+    P --> R[Evaluation Record + Orchestration Trace]
+    Q --> R
 
-    subgraph CheckerOutput[Quality Checker Output]
-        B1[Multi-label categories]
-        B2[Severity]
+    subgraph RouterOutput[Router Output]
+        B1[Decision: accept, revise, fallback]
+        B2[Taxonomy labels]
         B3[Confidence]
-        B4[Evidence]
-        B5[No-issue decision]
+        B4[Evidence / rationale]
+        B5[Recommended route]
     end
 
-    subgraph VerifierChecks[Verifier Checks]
-        M1[Original issue fixed?]
-        M2[Target concept preserved?]
-        M3[No new taxonomy issue?]
-        M4[Clean item left unchanged?]
+    subgraph TraceFields[Trace Fields]
+        R1[Selected route]
+        R2[Selected agent]
+        R3[Detected labels]
+        R4[Retry count]
+        R5[Validation status]
     end
 
-    B -. produces .-> CheckerOutput
-    M -. checks .-> VerifierChecks
+    B -. produces .-> RouterOutput
+    R -. includes .-> TraceFields
 ```
 
 ## Agent Responsibility Matrix
 
 | Stage | Main Job | Output | Main Failure To Guard Against |
 |---|---|---|---|
-| Quality Checker | Detect all relevant taxonomy issues, or decide no issue | Multi-label issue list with evidence and confidence | Missing multi-error items or over-flagging clean items |
-| Revision Planner | Convert detected issues into repair actions | Ordered revision plan | Jumping directly to a bad rewrite without preserving intent |
-| Revision Skills | Apply targeted fixes by issue family | Candidate repair instructions or partial rewrite | Treating every taxonomy category as a separate agent |
-| Final Reviser | Produce one coherent revised item | Revised question, response options, notes, changed flag | Patchwork revisions that conflict with each other |
-| Verifier | Audit the revised item against original and taxonomy | Pass, retry, or manual review | Accepting a fluent but concept-drifting revision |
+| Router / Quality Checker | Detect taxonomy issues, decide whether revision is needed, and select the route | Accept/revise/fallback decision with labels, confidence, evidence, and route | Forcing clean items into revision or over-trusting a brittle single-label classification |
+| Revision Planner | Convert detected issues into an ordered repair plan | Repair family, selected specialist or fallback, and revision instructions | Jumping directly to a rewrite without preserving the intended construct |
+| Specialist Revisers | Apply targeted fixes by issue family | Candidate revision for a specific issue family | Creating too many tiny agents or allowing specialists to change the construct |
+| General Fallback Reviser | Handle low-confidence, mixed, unsupported, or ambiguous cases | Candidate revision with fallback trace metadata | Dropping hard cases because the router cannot classify them cleanly |
+| Validator / Critic | Check the candidate against the original item and detected issues | Pass, bounded retry, or manual review | Accepting fluent but concept-drifting revisions |
+| Evaluation Recorder | Persist route, labels, confidence, selected agent, retry count, and validation status | Evaluation row with orchestration trace | Making orchestration behavior impossible to audit later |
 
-## Minimal MVP Version
+## Phased Implementation Note
 
-```mermaid
-flowchart LR
-    A[Survey Item] --> B[Quality Checker]
-    B --> C{Needs Revision?}
-    C -->|No| D[Verifier]
-    C -->|Yes| E[Revision Planner]
-    E --> F[Item Reviser]
-    F --> D
-    D -->|Pass| G[Final Output]
-    D -->|One Retry| E
-    D -->|Still Fails| H[Manual Review]
-```
+The full workflow above should be implemented incrementally:
+
+1. Add orchestration schemas, config, prompt slots, and trace objects while preserving current default behavior.
+2. Add the router / accept gate.
+3. Add the general fallback reviser path.
+4. Add the first specialist revisers and taxonomy-to-agent routing.
+5. Add validator retries, trace fields, evaluation output, and documentation.
+
+These phases describe delivery order only. They should not introduce a separate MVP
+workflow or a competing diagram.
 
 ## Suggested Internal State
 
 ```json
 {
-  "detected_issues": [
-    {
-      "category": "leading_question",
-      "family": "wording",
-      "severity": "high",
-      "confidence": 0.86,
-      "evidence": "Don't you agree",
-      "repair_strategy": "neutralize wording"
-    }
-  ],
-  "decision": {
-    "needs_revision": true,
-    "reason": "High-confidence wording issue detected."
+  "router": {
+    "decision": "revise",
+    "taxonomy_labels": ["leading_question"],
+    "confidence": 0.86,
+    "evidence": "The item nudges respondents toward agreement.",
+    "recommended_route": "wording_clarity"
   },
-  "revision_plan": [
-    "Rewrite as a neutral support/oppose question.",
-    "Use balanced item-specific response options."
-  ],
-  "verifier": {
+  "revision_plan": {
+    "repair_family": "wording_clarity",
+    "selected_agent": "wording_specialist",
+    "instructions": [
+      "Rewrite the item using neutral wording.",
+      "Preserve the original construct and intended measurement target."
+    ]
+  },
+  "validator": {
     "status": "pass",
-    "remaining_retry_budget": 1
+    "remaining_retry_budget": 1,
+    "rationale": "The revised item removes the leading phrasing and preserves the construct."
+  },
+  "trace": {
+    "route": "specialist",
+    "selected_agent": "wording_specialist",
+    "retry_count": 0,
+    "final_status": "accepted"
   }
 }
 ```

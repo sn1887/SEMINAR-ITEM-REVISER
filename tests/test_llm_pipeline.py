@@ -80,6 +80,70 @@ def test_llm_pipeline_detects_and_revises_item():
     assert model.calls == 2
 
 
+def test_llm_pipeline_skips_reviser_when_no_issues_are_detected():
+    model = QueueLLM([{"errors": []}])
+    item = SurveyItem(
+        question="How satisfied or dissatisfied are you with your current job?",
+        response_options=[
+            "Very dissatisfied",
+            "Somewhat dissatisfied",
+            "Neither satisfied nor dissatisfied",
+            "Somewhat satisfied",
+            "Very satisfied",
+        ],
+    )
+
+    result = ItemReviserPipeline(model=model, prompt_config=TEST_PROMPT_CONFIG).run(item)
+
+    assert result.predicted_categories() == []
+    assert result.revised_item.question == item.question
+    assert result.revised_item.response_options == item.response_options
+    assert result.revised_item.changed is False
+    assert result.revised_item.revision_notes == ["No issues detected; item left unchanged."]
+    assert model.calls == 1
+
+
+def test_llm_pipeline_can_force_revision_even_without_detected_issues_via_config():
+    model = QueueLLM(
+        [
+            {"errors": []},
+            {
+                "question": "How satisfied are you with your current job?",
+                "response_options": [
+                    "Very dissatisfied",
+                    "Somewhat dissatisfied",
+                    "Neither satisfied nor dissatisfied",
+                    "Somewhat satisfied",
+                    "Very satisfied",
+                ],
+                "revision_notes": ["Tightened wording."],
+                "changed": True,
+            },
+        ]
+    )
+    item = SurveyItem(
+        question="How satisfied or dissatisfied are you with your current job?",
+        response_options=[
+            "Very dissatisfied",
+            "Somewhat dissatisfied",
+            "Neither satisfied nor dissatisfied",
+            "Somewhat satisfied",
+            "Very satisfied",
+        ],
+    )
+
+    result = ItemReviserPipeline(
+        model=model,
+        prompt_config=TEST_PROMPT_CONFIG,
+        agent_config={"skip_revision_when_no_errors": False},
+    ).run(item)
+
+    assert result.predicted_categories() == []
+    assert result.revised_item.question == "How satisfied are you with your current job?"
+    assert result.revised_item.changed is True
+    assert model.calls == 2
+
+
 def test_pipeline_requires_model():
     with pytest.raises(ValueError, match="requires an LLM model"):
         ItemReviserPipeline(  # type: ignore[arg-type]

@@ -208,6 +208,33 @@ Agent prompt slots live in `configs/prompt/default.yaml` and point to Markdown
 templates under `prompts/agents/`, including `router`, `revision_planner`,
 `fallback_reviser`, the five specialist families, and `validator`.
 
+The baseline non-orchestrated pipeline also has runtime knobs in
+`configs/agent/item_reviser.yaml`, including:
+
+- `use_llm_for_quality_checking`
+- `use_llm_for_revision`
+- `skip_revision_when_no_errors`
+- `unchanged_revision_notes`
+
+The orchestration config now exposes not just `enabled`, but also nested routing
+and validation policies, for example:
+
+```yaml
+orchestration:
+  enabled: true
+  confidence_threshold: 0.75
+  retry_budget: 1
+  strategy: single_specialist
+  multi_label_strategy: fallback
+  routing:
+    low_confidence_action: fallback
+    multi_label_action: fallback
+  validation:
+    enabled: true
+    validate_accept_path: true
+    accept_failure_action: fallback
+```
+
 When enabled, prediction rows include an `orchestration_trace` plus flattened
 evaluation fields for route, router decision, taxonomy labels, confidence,
 selected agent, retry count, validation status, and final status. See

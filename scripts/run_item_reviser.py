@@ -40,6 +40,7 @@ def main(cfg: DictConfig) -> None:
     result = ItemReviserPipeline(
         model=model,
         prompt_config=cfg.prompt,
+        agent_config=cfg.get("agent"),
         orchestration_config=cfg.get("orchestration"),
     ).run(item)
     print_json(data=result.to_dict())

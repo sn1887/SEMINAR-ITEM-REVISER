@@ -108,16 +108,34 @@ def _validator(status: str = "pass") -> dict[str, object]:
 
 def test_orchestration_config_loads_from_dictconfig_and_validates_bounds():
     cfg = OrchestrationConfig.from_config(
-        OmegaConf.create({"enabled": True, "confidence_threshold": 0.5, "retry_budget": 2})
+        OmegaConf.create(
+            {
+                "enabled": True,
+                "confidence_threshold": 0.5,
+                "retry_budget": 2,
+                "routing": {"low_confidence_action": "manual_review"},
+                "validation": {
+                    "enabled": True,
+                    "validate_accept_path": False,
+                    "accept_failure_action": "manual_review",
+                },
+            }
+        )
     )
 
     assert cfg.enabled is True
     assert cfg.confidence_threshold == 0.5
     assert cfg.retry_budget == 2
+    assert cfg.routing.low_confidence_action == "manual_review"
+    assert cfg.validation.validate_accept_path is False
+    assert cfg.validation.accept_failure_action == "manual_review"
     assert cfg.family_for_label("leading_question") == "wording_clarity"
 
     with pytest.raises(ValueError, match="confidence_threshold"):
         OrchestrationConfig.from_config({"confidence_threshold": 1.5})
+
+    with pytest.raises(ValueError, match="low_confidence_action"):
+        OrchestrationConfig.from_config({"routing": {"low_confidence_action": "specialist"}})
 
 
 def test_orchestrated_accept_path_leaves_item_unchanged_and_traced():
@@ -162,6 +180,25 @@ def test_low_confidence_router_uses_fallback_reviser():
     assert "support or oppose" in result.revised_item.question
 
 
+def test_low_confidence_router_can_route_directly_to_manual_review():
+    model = QueueLLM([_router("revise", ["leading_question"], confidence=0.2)])
+    item = SurveyItem(id="manual", question="Don't you agree stricter rules are needed?")
+
+    result = ItemReviserPipeline(
+        model=model,
+        prompt_config=ORCHESTRATION_PROMPTS,
+        orchestration_config={
+            "enabled": True,
+            "routing": {"low_confidence_action": "manual_review"},
+        },
+    ).run(item)
+
+    assert result.orchestration_trace is not None
+    assert result.orchestration_trace.route == "manual_review"
+    assert result.orchestration_trace.final_status == "manual_review"
+    assert result.revised_item.changed is False
+
+
 def test_single_supported_label_uses_specialist_route():
     model = QueueLLM(
         [
@@ -183,6 +220,22 @@ def test_single_supported_label_uses_specialist_route():
     assert result.orchestration_trace is not None
     assert result.orchestration_trace.route == "specialist"
     assert result.orchestration_trace.selected_agent == "response_options_scale"
+
+
+def test_accept_path_validation_can_be_disabled_by_config():
+    model = QueueLLM([_router("accept", [], recommended_route="accept")])
+    item = SurveyItem(id="clean", question="How satisfied are you?")
+
+    result = ItemReviserPipeline(
+        model=model,
+        prompt_config=ORCHESTRATION_PROMPTS,
+        orchestration_config={"enabled": True, "validation": {"validate_accept_path": False}},
+    ).run(item)
+
+    assert result.orchestration_trace is not None
+    assert result.orchestration_trace.validation_status == "skipped"
+    assert result.orchestration_trace.final_status == "accepted"
+    assert len(model.prompts) == 1
 
 
 def test_multi_label_cases_route_to_fallback_by_default():
@@ -207,6 +260,25 @@ def test_multi_label_cases_route_to_fallback_by_default():
     assert result.orchestration_trace is not None
     assert result.orchestration_trace.route == "fallback"
     assert "Multiple taxonomy labels" in (result.orchestration_trace.fallback_reason or "")
+
+
+def test_revision_validation_can_be_disabled_by_config():
+    model = QueueLLM(
+        [
+            _router("revise", ["leading_question"], recommended_route="fallback"),
+            _revision("To what extent do you support or oppose stricter rules?"),
+        ]
+    )
+
+    result = ItemReviserPipeline(
+        model=model,
+        prompt_config=ORCHESTRATION_PROMPTS,
+        orchestration_config={"enabled": True, "validation": {"enabled": False}},
+    ).run(SurveyItem(question="Don't you agree stricter rules are needed?"))
+
+    assert result.orchestration_trace is not None
+    assert result.orchestration_trace.validation_status == "skipped"
+    assert result.orchestration_trace.final_status == "revised"
 
 
 def test_validator_retry_is_bounded_and_recorded():

@@ -62,9 +62,9 @@ CHECKER_OUTPUT_SCHEMA: dict[str, Any] = {
                     "category": {"type": "string"},
                     "severity": {"type": "string"},
                     "explanation": {"type": "string"},
-                    "evidence": {"type": "string"},
-                    "suggestion": {"type": "string"},
-                    "checker": {"type": "string"},
+                    "evidence": {"type": ["string", "null"]},
+                    "suggestion": {"type": ["string", "null"]},
+                    "checker": {"type": ["string", "null"]},
                 },
             },
         },
@@ -141,6 +141,20 @@ def _validate_schema(data: Any, schema: Mapping[str, Any], path: str = "") -> No
         raise LLMOutputSchemaError(f"{path or 'value'} must be one of {schema['enum']}.")
 
     expected_type = schema.get("type")
+    if isinstance(expected_type, list | tuple | set):
+        for candidate_type in expected_type:
+            candidate_schema = dict(schema)
+            candidate_schema["type"] = candidate_type
+            try:
+                _validate_schema(data, candidate_schema, path)
+                return
+            except LLMOutputSchemaError:
+                continue
+        choices = ", ".join(str(item) for item in expected_type)
+        raise LLMOutputSchemaError(
+            f"{path or 'value'} must match one of the allowed types: {choices}."
+        )
+
     if expected_type == "object":
         if not isinstance(data, Mapping):
             raise LLMOutputSchemaError(f"{path or 'value'} must be an object.")
@@ -198,6 +212,12 @@ def _validate_schema(data: Any, schema: Mapping[str, Any], path: str = "") -> No
             raise LLMOutputSchemaError(f"{path or 'value'} must be null.")
         return
 
+
+
+def _normalize_structured_output(data: Any, schema: Mapping[str, Any]) -> Any:
+    if schema is CHECKER_OUTPUT_SCHEMA and isinstance(data, list):
+        return {"errors": data}
+    return data
 
 
 class BaseLLM(ABC):
@@ -279,6 +299,7 @@ class BaseLLM(ABC):
                 if attempt >= max_retries:
                     raise
                 continue
+            parsed = _normalize_structured_output(parsed, schema)
             try:
                 _validate_schema(parsed, schema)
             except LLMOutputSchemaError as exc:

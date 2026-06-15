@@ -38,7 +38,7 @@ ROUTER_OUTPUT_SCHEMA: dict[str, Any] = {
         "decision": {"type": "string", "enum": ["accept", "revise", "fallback"]},
         "taxonomy_labels": {"type": "array", "items": {"type": "string"}},
         "confidence": {"type": "number"},
-        "evidence": {"type": "string"},
+        "evidence": {"type": ["string", "null"]},
         "rationale": {"type": "string"},
         "recommended_route": {"type": "string"},
     },
@@ -56,7 +56,7 @@ REVISION_PLAN_OUTPUT_SCHEMA: dict[str, Any] = {
         },
         "selected_agent": {"type": "string"},
         "instructions": {"type": "array", "items": {"type": "string"}},
-        "fallback_reason": {"type": "string"},
+        "fallback_reason": {"type": ["string", "null"]},
         "rationale": {"type": "string"},
     },
 }
@@ -177,6 +177,19 @@ def _validation_criteria(detected_errors: list[CheckResult]) -> list[str]:
         "The candidate preserves the target construct.",
         "The candidate introduces no obvious new questionnaire-quality issue.",
     ]
+
+
+def _unchanged_item(
+    item: SurveyItem,
+    *,
+    note: str,
+) -> RevisedItem:
+    return RevisedItem(
+        question=item.question,
+        response_options=list(item.response_options),
+        revision_notes=[note],
+        changed=False,
+    )
 
 
 class RouterAgent(BaseAgent):
@@ -488,6 +501,18 @@ class OrchestratedItemReviser:
         trace.route = route
         trace.fallback_reason = fallback_reason
 
+        if route == "manual_review":
+            return self._manual_review_result(
+                item=item,
+                detected_errors=detected_errors,
+                revised_item=_unchanged_item(
+                    item,
+                    note="Router requested manual review before revision.",
+                ),
+                trace=trace,
+                reason=fallback_reason or "Router requested manual review.",
+            )
+
         if route == "accept":
             return self._run_accept_path(
                 item=item,
@@ -515,13 +540,25 @@ class OrchestratedItemReviser:
         detected_errors: list[CheckResult],
         trace: OrchestrationTrace,
     ) -> PipelineResult:
-        revised = RevisedItem(
-            question=item.question,
-            response_options=list(item.response_options),
-            revision_notes=["Router accepted item without revision."],
-            changed=False,
-        )
+        revised = _unchanged_item(item, note="Router accepted item without revision.")
         trace.selected_agent = "accept"
+        if not self.config.validation.enabled or not self.config.validation.validate_accept_path:
+            trace.validation_status = "skipped"
+            trace.add_attempt(
+                stage="validator",
+                status="skipped",
+                retry_index=trace.retry_count,
+                rationale="Validation skipped by orchestration config.",
+            )
+            trace.final_status = "accepted"
+            return PipelineResult(
+                item_id=item.id,
+                original_item=item,
+                detected_errors=detected_errors,
+                revised_item=revised,
+                orchestration_trace=trace,
+            )
+
         validation = self.validator.validate(
             item,
             detected_errors,
@@ -547,7 +584,11 @@ class OrchestratedItemReviser:
                 orchestration_trace=trace,
             )
 
-        if validation.status in {"retry", "failed"} and self.config.retry_budget > 0:
+        if (
+            validation.status in {"retry", "failed"}
+            and self.config.retry_budget > 0
+            and self.config.validation.accept_failure_action == "fallback"
+        ):
             trace.route = "fallback"
             trace.selected_agent = "fallback_reviser"
             trace.fallback_reason = (
@@ -610,6 +651,25 @@ class OrchestratedItemReviser:
                 retry_instructions=current_retry_instructions,
             )
             candidate = output.to_revised_item()
+            if not self.config.validation.enabled:
+                trace.validation_status = "skipped"
+                trace.add_attempt(
+                    stage="validator",
+                    status="skipped",
+                    retry_index=current_retry_count,
+                    selected_agent=trace.selected_agent,
+                    rationale="Validation skipped by orchestration config.",
+                )
+                trace.final_status = "revised" if candidate.changed else "accepted"
+                trace.route = current_route
+                return PipelineResult(
+                    item_id=item.id,
+                    original_item=item,
+                    detected_errors=detected_errors,
+                    revised_item=candidate,
+                    orchestration_trace=trace,
+                )
+
             validation = self.validator.validate(
                 item,
                 detected_errors,
@@ -894,28 +954,59 @@ class OrchestratedItemReviser:
         recommended_route = router_decision.recommended_route.strip().lower()
 
         if router_decision.confidence < self.config.confidence_threshold:
-            return "fallback", "Router confidence was below the configured threshold."
+            return self._action_route(
+                self.config.routing.low_confidence_action,
+                "Router confidence was below the configured threshold.",
+            )
         if unknown_labels:
-            return "fallback", "Router returned unsupported labels: " + ", ".join(unknown_labels)
+            return self._action_route(
+                self.config.routing.unknown_label_action,
+                "Router returned unsupported labels: " + ", ".join(unknown_labels),
+            )
         if recommended_route in {"fallback", "general_fallback", "manual_review"}:
-            return "fallback", "Router recommended the general fallback route."
+            return self._action_route(
+                self.config.routing.router_fallback_action,
+                "Router recommended the general fallback route.",
+            )
         if router_decision.decision == "accept":
             if labels:
-                return "fallback", "Router accepted the item but also returned taxonomy labels."
+                return self._action_route(
+                    self.config.routing.contradictory_accept_action,
+                    "Router accepted the item but also returned taxonomy labels.",
+                )
             return "accept", None
         if router_decision.decision == "fallback":
-            return "fallback", "Router selected fallback."
+            return self._action_route(
+                self.config.routing.router_fallback_action,
+                "Router selected fallback.",
+            )
         if not labels:
-            return "fallback", "Router requested revision without taxonomy labels."
+            return self._action_route(
+                self.config.routing.missing_taxonomy_action,
+                "Router requested revision without taxonomy labels.",
+            )
 
         families = self._families_for_labels(labels)
         if not families or "fallback" in families:
-            return "fallback", "No supported specialist family was available."
+            return self._action_route(
+                self.config.routing.unsupported_family_action,
+                "No supported specialist family was available.",
+            )
         if len(labels) > 1 and not self._sequential_enabled():
-            return "fallback", "Multiple taxonomy labels were routed to fallback by default."
+            return self._action_route(
+                self.config.routing.multi_label_action,
+                "Multiple taxonomy labels were routed to fallback by default.",
+            )
         if len(families) > 1 and not self._sequential_enabled():
-            return "fallback", "Mixed specialist families were routed to fallback by default."
+            return self._action_route(
+                self.config.routing.mixed_family_action,
+                "Mixed specialist families were routed to fallback by default.",
+            )
         return "specialist", None
+
+    @staticmethod
+    def _action_route(action: str, reason: str) -> tuple[str, str]:
+        return action, reason
 
     def _detected_errors_from_router(self, router_decision: RouterDecision) -> list[CheckResult]:
         detected = []
@@ -970,6 +1061,8 @@ class OrchestratedItemReviser:
         trace: OrchestrationTrace,
         reason: str,
     ) -> PipelineResult:
+        if trace.selected_agent is None:
+            trace.selected_agent = "manual_review"
         trace.final_status = "manual_review"
         trace.manual_review_reason = reason
         trace.add_attempt(stage="manual_review", reason=reason)

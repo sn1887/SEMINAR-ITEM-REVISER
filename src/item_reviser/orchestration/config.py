@@ -42,6 +42,9 @@ DEFAULT_AGENT_PROMPTS: dict[str, str] = {
     "questionnaire_format": "questionnaire_format",
 }
 
+ROUTING_ACTIONS = {"fallback", "manual_review"}
+ACCEPT_FAILURE_ACTIONS = {"fallback", "manual_review"}
+
 
 def _to_plain_mapping(config: object | None) -> dict[str, Any]:
     if config is None:
@@ -76,6 +79,25 @@ def _as_mapping(value: Any) -> dict[str, Any]:
 
 
 @dataclass(frozen=True)
+class OrchestrationRoutingConfig:
+    low_confidence_action: str = "fallback"
+    unknown_label_action: str = "fallback"
+    router_fallback_action: str = "fallback"
+    contradictory_accept_action: str = "fallback"
+    missing_taxonomy_action: str = "fallback"
+    unsupported_family_action: str = "fallback"
+    multi_label_action: str = "fallback"
+    mixed_family_action: str = "fallback"
+
+
+@dataclass(frozen=True)
+class OrchestrationValidationConfig:
+    enabled: bool = True
+    validate_accept_path: bool = True
+    accept_failure_action: str = "fallback"
+
+
+@dataclass(frozen=True)
 class OrchestrationConfig:
     enabled: bool = False
     strategy: str = "single_specialist"
@@ -83,6 +105,8 @@ class OrchestrationConfig:
     confidence_threshold: float = 0.7
     retry_budget: int = 1
     multi_label_strategy: str = "fallback"
+    routing: OrchestrationRoutingConfig = field(default_factory=OrchestrationRoutingConfig)
+    validation: OrchestrationValidationConfig = field(default_factory=OrchestrationValidationConfig)
     specialist_families: dict[str, str] = field(
         default_factory=lambda: dict(DEFAULT_SPECIALIST_FAMILIES)
     )
@@ -113,6 +137,57 @@ class OrchestrationConfig:
         if multi_label_strategy not in {"fallback", "sequential"}:
             raise ValueError(
                 "orchestration.multi_label_strategy must be 'fallback' or 'sequential'."
+            )
+
+        routing_data = _as_mapping(data.get("routing"))
+        validation_data = _as_mapping(data.get("validation"))
+
+        routing = OrchestrationRoutingConfig(
+            low_confidence_action=str(
+                routing_data.get("low_confidence_action", "fallback") or "fallback"
+            ),
+            unknown_label_action=str(
+                routing_data.get("unknown_label_action", "fallback") or "fallback"
+            ),
+            router_fallback_action=str(
+                routing_data.get("router_fallback_action", "fallback") or "fallback"
+            ),
+            contradictory_accept_action=str(
+                routing_data.get("contradictory_accept_action", "fallback") or "fallback"
+            ),
+            missing_taxonomy_action=str(
+                routing_data.get("missing_taxonomy_action", "fallback") or "fallback"
+            ),
+            unsupported_family_action=str(
+                routing_data.get("unsupported_family_action", "fallback") or "fallback"
+            ),
+            multi_label_action=str(
+                routing_data.get("multi_label_action", "fallback") or "fallback"
+            ),
+            mixed_family_action=str(
+                routing_data.get("mixed_family_action", "fallback") or "fallback"
+            ),
+        )
+        for field_name, value in vars(routing).items():
+            if value not in ROUTING_ACTIONS:
+                choices = ", ".join(sorted(ROUTING_ACTIONS))
+                raise ValueError(
+                    f"orchestration.routing.{field_name} must be one of: {choices}."
+                )
+
+        validation = OrchestrationValidationConfig(
+            enabled=bool(validation_data.get("enabled", True)),
+            validate_accept_path=bool(validation_data.get("validate_accept_path", True)),
+            accept_failure_action=str(
+                validation_data.get("accept_failure_action", "fallback") or "fallback"
+            ),
+        )
+        if validation.accept_failure_action not in ACCEPT_FAILURE_ACTIONS:
+            choices = ", ".join(sorted(ACCEPT_FAILURE_ACTIONS))
+            raise ValueError(
+                "orchestration.validation.accept_failure_action must be one of: "
+                + choices
+                + "."
             )
 
         labels = _as_list(data.get("taxonomy_labels"), list(ERROR_CATEGORIES))
@@ -158,6 +233,8 @@ class OrchestrationConfig:
             confidence_threshold=threshold,
             retry_budget=retry_budget,
             multi_label_strategy=multi_label_strategy,
+            routing=routing,
+            validation=validation,
             specialist_families=family_data,
             agent_prompt_names=prompt_names,
         )

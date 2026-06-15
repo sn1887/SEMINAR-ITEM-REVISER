@@ -108,6 +108,14 @@ def _run_mlflow_tracking(cfg: DictConfig, metrics: dict[str, Any], output_dir: P
         OmegaConf.to_container(cfg.get("experiment", {}), resolve=True),
         prefix="experiment",
     )
+    agent_cfg = _flatten_params(
+        OmegaConf.to_container(cfg.get("agent", {}), resolve=True),
+        prefix="agent",
+    )
+    orchestration_cfg = _flatten_params(
+        OmegaConf.to_container(cfg.get("orchestration", {}), resolve=True),
+        prefix="orchestration",
+    )
     tracking_cfg = _flatten_params(
         OmegaConf.to_container(cfg.get("tracking", {}), resolve=True),
         prefix="tracking",
@@ -124,6 +132,8 @@ def _run_mlflow_tracking(cfg: DictConfig, metrics: dict[str, Any], output_dir: P
         mlflow.log_params(model_cfg)
         mlflow.log_params(data_cfg)
         mlflow.log_params(experiment_cfg)
+        mlflow.log_params(agent_cfg)
+        mlflow.log_params(orchestration_cfg)
         mlflow.log_params(tracking_cfg)
         mlflow.log_params(prompt_cfg)
         mlflow.log_params(dataset_cfg)
@@ -142,6 +152,7 @@ def main(cfg: DictConfig) -> None:
         output_dir=cfg.paths.output_dir,
         model=model,
         prompt_config=cfg.prompt,
+        agent_config=cfg.get("agent"),
         orchestration_config=cfg.get("orchestration"),
         max_items=max_items,
         write_predictions=bool(cfg.experiment.get("write_predictions", True)),

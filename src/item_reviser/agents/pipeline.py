@@ -3,10 +3,11 @@ from __future__ import annotations
 from item_reviser.agents.item_reviser import ItemReviserAgent
 from item_reviser.agents.orchestration import OrchestratedItemReviser
 from item_reviser.agents.quality_checker import QualityCheckerAgent
+from item_reviser.agent_config import AgentRuntimeConfig
 from item_reviser.models.base import BaseLLM
 from item_reviser.orchestration.config import OrchestrationConfig
 from item_reviser.prompting import agent_prompt_config
-from item_reviser.schemas import PipelineResult, SurveyItem
+from item_reviser.schemas import PipelineResult, RevisedItem, SurveyItem
 
 
 class ItemReviserPipeline:
@@ -14,10 +15,12 @@ class ItemReviserPipeline:
         self,
         model: BaseLLM,
         prompt_config: object,
+        agent_config: object | None = None,
         orchestration_config: object | None = None,
     ) -> None:
         if model is None:
             raise ValueError("ItemReviserPipeline requires an LLM model.")
+        self.agent_config = AgentRuntimeConfig.from_config(agent_config)
         self.orchestration_config = OrchestrationConfig.from_config(orchestration_config)
         self.orchestrator: OrchestratedItemReviser | None = None
         if self.orchestration_config.enabled:
@@ -41,8 +44,21 @@ class ItemReviserPipeline:
         if self.orchestrator is not None:
             return self.orchestrator.run(item)
 
-        errors = self.quality_checker.check(item)
-        revised = self.item_reviser.revise(item, errors)
+        errors = []
+        if self.agent_config.use_llm_for_quality_checking:
+            errors = self.quality_checker.check(item)
+
+        if self.agent_config.use_llm_for_revision and (
+            errors or not self.agent_config.skip_revision_when_no_errors
+        ):
+            revised = self.item_reviser.revise(item, errors)
+        else:
+            revised = RevisedItem(
+                question=item.question,
+                response_options=list(item.response_options),
+                revision_notes=list(self.agent_config.unchanged_revision_notes),
+                changed=False,
+            )
         return PipelineResult(
             item_id=item.id,
             original_item=item,

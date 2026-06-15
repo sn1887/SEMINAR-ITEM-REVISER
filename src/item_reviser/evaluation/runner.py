@@ -44,6 +44,7 @@ def run_evaluation(
     output_dir: str | Path,
     model: BaseLLM,
     prompt_config: object,
+    agent_config: object | None = None,
     orchestration_config: object | None = None,
     max_items: int | None = None,
     write_predictions: bool = True,
@@ -60,6 +61,7 @@ def run_evaluation(
     pipeline = ItemReviserPipeline(
         model=model,
         prompt_config=prompt_config,
+        agent_config=agent_config,
         orchestration_config=orchestration_config,
     )
 
