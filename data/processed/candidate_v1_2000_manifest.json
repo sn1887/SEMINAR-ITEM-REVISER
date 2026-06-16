@@ -1,0 +1,178 @@
+{
+  "actual_counts": {
+    "category_counts": {
+      "agree_disagree_scale": 120,
+      "double_barreled": 120,
+      "incomplete_options": 120,
+      "leading_question": 120,
+      "loaded_question": 120,
+      "missing_scale_labels": 120,
+      "negative_wording": 120,
+      "non_exclusive_options": 120,
+      "open_closed_mismatch": 120,
+      "polarity_mismatch": 120,
+      "recall_error": 120,
+      "sensitive_topic_direct": 120,
+      "social_desirability": 120,
+      "too_many_scale_points": 120,
+      "unbalanced_scale": 120,
+      "vague_ambiguous": 120
+    },
+    "chapter_ref_distribution": {
+      "SarisGallhofer2014_ch1": 2000,
+      "SarisGallhofer2014_ch2": 2000,
+      "SarisGallhofer2014_ch3": 2000,
+      "SarisGallhofer2014_ch4": 2000,
+      "SarisGallhofer2014_ch5": 2000,
+      "SarisGallhofer2014_ch6": 2000
+    },
+    "clean_controls": 400,
+    "difficulty_distribution": {
+      "borderline": 666,
+      "obvious": 667,
+      "realistic": 667
+    },
+    "duplicate_ids": [],
+    "duplicate_question_count": 0,
+    "format_distribution": {
+      "binary_yes_no": 225,
+      "categorical_closed_ended": 224,
+      "filter_question": 165,
+      "frequency": 264,
+      "likert_agreement": 245,
+      "numeric_ranges": 244,
+      "open_ended": 144,
+      "ordinal_categories": 324,
+      "support_oppose": 165
+    },
+    "label_cardinality": {
+      "0": 400,
+      "1": 1280,
+      "2": 320
+    },
+    "multi_label_flawed": 320,
+    "single_label_flawed": 1280,
+    "source_ref_distribution": {
+      "AgenticSurveyItemsGeneratorOverview": 2000,
+      "ProtocolMeetingAbdulSamad": 2000,
+      "QuestionnaireDesignLMU_1": 2000,
+      "QuestionnaireDesignLMU_slide_108": 120,
+      "QuestionnaireDesignLMU_slide_123": 120,
+      "QuestionnaireDesignLMU_slide_124": 120,
+      "QuestionnaireDesignLMU_slide_125": 120,
+      "QuestionnaireDesignLMU_slide_126": 120,
+      "QuestionnaireDesignLMU_slide_128": 120,
+      "QuestionnaireDesignLMU_slide_130": 120,
+      "QuestionnaireDesignLMU_slide_152": 120,
+      "QuestionnaireDesignLMU_slide_176": 120,
+      "QuestionnaireDesignLMU_slides_113_118": 120,
+      "QuestionnaireDesignLMU_slides_113_120": 120,
+      "QuestionnaireDesignLMU_slides_134_137": 220,
+      "QuestionnaireDesignLMU_slides_155_157": 120,
+      "QuestionnaireDesignLMU_slides_157_163": 120,
+      "QuestionnaireDesignLMU_slides_174_187": 120,
+      "SarisGallhofer2014_ch1": 2000,
+      "SarisGallhofer2014_ch2": 2000,
+      "SarisGallhofer2014_ch2_2.7": 120,
+      "SarisGallhofer2014_ch3": 2000,
+      "SarisGallhofer2014_ch4": 2000,
+      "SarisGallhofer2014_ch4_4.2": 340,
+      "SarisGallhofer2014_ch4_4.3.1": 120,
+      "SarisGallhofer2014_ch4_4.3.2": 120,
+      "SarisGallhofer2014_ch4_4.5.2": 120,
+      "SarisGallhofer2014_ch4_4.6.3": 220,
+      "SarisGallhofer2014_ch5": 2000,
+      "SarisGallhofer2014_ch5_5.1": 120,
+      "SarisGallhofer2014_ch5_5.2": 220,
+      "SarisGallhofer2014_ch5_5.2.3": 120,
+      "SarisGallhofer2014_ch5_5.3": 120,
+      "SarisGallhofer2014_ch5_5.4": 120,
+      "SarisGallhofer2014_ch6": 2000,
+      "SarisGallhofer2014_ch6_6.2": 120,
+      "SarisGallhofer2014_ch6_6.2.4": 120,
+      "item_reviser_meeting_deck": 2000
+    },
+    "topic_distribution": {
+      "education": 151,
+      "environment": 109,
+      "family/household": 139,
+      "finances": 149,
+      "health": 246,
+      "labor": 143,
+      "media/culture": 138,
+      "mobility": 170,
+      "politics/public policy": 87,
+      "public services": 170,
+      "sensitive behaviors": 97,
+      "technology": 162,
+      "university life": 129,
+      "work": 110
+    },
+    "total_rows": 2000
+  },
+  "candidate_status": "candidate_v1",
+  "dataset_name": "candidate_v1_2000",
+  "dataset_path": "data/processed/candidate_v1_2000.jsonl",
+  "dataset_sha256": "379eec4e2ba38436c7e220af83f14518d448278901a408b859645e5e0fcd0294",
+  "description": "Literature-grounded synthetic candidate benchmark for the SEMINAR-ITEM-REVISER item-reviser.",
+  "generation_workflow": [
+    "source_distiller: paraphrased design principles from first six textbook chapters and seminar materials",
+    "taxonomy_mapper: aligned principles to the 16 repository labels",
+    "clean_item_author: authored clean base items across topic domains and response formats",
+    "flaw_injector: generated controlled single-label and realistic multi-label flaws",
+    "gold_reviser: generated minimal construct-preserving expected revisions",
+    "critic_adjudicator: encoded schema, label, clean-control, and revision checks in the script audit",
+    "coverage_auditor: enforced quotas and distribution summaries",
+    "repo_integrator: wrote processed artifacts and ran the repository validator"
+  ],
+  "manual_review_required": true,
+  "review_queue_path": "data/processed/candidate_v1_review_queue.jsonl",
+  "row_count": 2000,
+  "rubric_path": "data/processed/candidate_v1_rubric.md",
+  "schema_contract": "Compatible with src/item_reviser/evaluation/dataset.py and SurveyItem.from_dict.",
+  "seed_eval_set_path": "data/eval/test_set_200_seed.jsonl",
+  "seed_eval_set_sha256_after_generation": "80d5f15fe87ae8bb9eb00fe79ac990759a230dbee2ffc71e99f4a3ef16be5404",
+  "source_files": [
+    {
+      "path": "seminar-material/Willem E. Saris, Irmtraud N. Gallhofer-Design, Evaluation, and Analysis of Questionnaires for Survey Research-Wiley (2014).pdf",
+      "sha256": "82f49bda471b0cf498a26bce867ef247aec1f19a00682b56f4b4644386d6d7ce"
+    },
+    {
+      "path": "seminar-material/Questionnaire Design_LMU_1.pptx",
+      "sha256": "5c02fcd4a294caeb0449c52124b7f736814fc02f2512450e9103292a28a86ca2"
+    },
+    {
+      "path": "seminar-material/Agentic Survey Items Generator Overview.pdf",
+      "sha256": "25bd801f8d2e08e734769f53a83265a4ad8a20a93605debc8ed3da0f7a64391f"
+    },
+    {
+      "path": "seminar-material/Protocol Meeting Abdul Samad-v1.docx",
+      "sha256": "70901f687f628016df9d5feac817978f02d3904d7a131941e77ffb8cd4070fcf"
+    },
+    {
+      "path": "seminar-material/Protocol Meeting Abdul Samad.docx",
+      "sha256": "51a7cd637c76c2a3b27bff10e3093808eeb64e7cc53cdf61223cc6034c9261de"
+    },
+    {
+      "path": "seminar-material/item_reviser_meeting_deck.tex",
+      "sha256": "3bb9d43bd9641e5ca0047f306cb54a75627c18de6ff816a824c40e8c4a8ce66e"
+    },
+    {
+      "path": "docs/source_notes.md",
+      "sha256": "0150c7ae166d9fdf6fcc6d101fc83febee1b6e176360a60806c934e7e81ece1e"
+    },
+    {
+      "path": "docs/literature_checklist.md",
+      "sha256": "8329e9638813d9b0f773cd9125efc571b29dd0b6394f494dfb12ffe66eaf500d"
+    }
+  ],
+  "summary_path": "data/processed/candidate_v1_2000_summary.md",
+  "target_composition": {
+    "clean_controls": 400,
+    "multi_label_additional_instances_per_label": 40,
+    "multi_label_flawed": 320,
+    "single_label_flawed": 1280,
+    "single_label_per_taxonomy_label": 80
+  },
+  "validation_command": "python scripts/validate_eval_set.py data/processed/candidate_v1_2000.jsonl"
+}
