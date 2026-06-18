@@ -1,5 +1,11 @@
 from item_reviser.evaluation.metrics import compute_detection_metrics
-from item_reviser.schemas import CheckResult, PipelineResult, RevisedItem, SurveyItem
+from item_reviser.schemas import (
+    CheckResult,
+    PipelineError,
+    PipelineResult,
+    RevisedItem,
+    SurveyItem,
+)
 
 
 def test_metrics_smoke():
@@ -53,3 +59,35 @@ def test_metrics_smoke():
     metrics = compute_detection_metrics(items, results)
     assert metrics["num_items"] == 2
     assert "precision" in metrics
+
+
+def test_failed_clean_result_does_not_receive_exact_match_credit():
+    item = SurveyItem(
+        id="clean",
+        question="How satisfied are you?",
+        response_options=["Satisfied", "Dissatisfied"],
+        known_errors=[],
+        expected_revision={
+            "question": "How satisfied are you?",
+            "response_options": ["Satisfied", "Dissatisfied"],
+        },
+    )
+    result = PipelineResult(
+        item_id=item.id,
+        original_item=item,
+        detected_errors=[],
+        revised_item=RevisedItem(
+            question=item.question,
+            response_options=item.response_options,
+            changed=False,
+        ),
+        error=PipelineError(
+            error_type="LLMOutputParseError",
+            message="Invalid JSON",
+        ),
+    )
+
+    metrics = compute_detection_metrics([item], [result])
+
+    assert metrics["exact_match"] == 0
+    assert metrics["revision_quality"]["exact_revision_rate"] == 0

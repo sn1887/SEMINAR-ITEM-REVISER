@@ -7,4 +7,18 @@ metrics:
   - exact_match
   - false_positive_rate_on_clean_items
   - overcorrection_rate
+  - failed_items
+  - failure_rate
 write_confusion_by_category: true
+
+# Keep long benchmark runs alive when a single item produces invalid JSON,
+# a schema mismatch, or another model-output failure. Failed items are written
+# to predictions.jsonl with an explicit error block and counted in metrics.
+continue_on_item_error: true
+
+# Stream predictions as each item finishes so partial artifacts survive model
+# failures, Slurm preemption, or wall-time termination.
+write_predictions_incrementally: true
+
+# Include Python tracebacks in failed prediction rows for post-run debugging.
+include_error_traceback: true

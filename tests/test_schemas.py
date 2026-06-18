@@ -1,4 +1,10 @@
-from item_reviser.schemas import OrchestrationTrace, PipelineResult, RevisedItem, SurveyItem
+from item_reviser.schemas import (
+    OrchestrationTrace,
+    PipelineError,
+    PipelineResult,
+    RevisedItem,
+    SurveyItem,
+)
 
 
 def test_survey_item_roundtrip():
@@ -32,3 +38,23 @@ def test_pipeline_result_serializes_optional_orchestration_trace():
 
     assert data["orchestration_trace"]["route"] == "accept"
     assert data["orchestration"]["final_status"] == "accepted"
+
+
+def test_pipeline_result_serializes_evaluation_error():
+    item = SurveyItem(id="x", question="Q?")
+    result = PipelineResult(
+        item_id=item.id,
+        original_item=item,
+        detected_errors=[],
+        revised_item=RevisedItem(question=item.question, changed=False),
+        error=PipelineError(
+            error_type="LLMOutputParseError",
+            message="Invalid JSON",
+            stage="pipeline.run",
+        ),
+    )
+
+    data = result.to_dict()
+
+    assert data["error"]["error_type"] == "LLMOutputParseError"
+    assert data["error"]["stage"] == "pipeline.run"

@@ -1,0 +1,8 @@
+name: final_gold_1000
+path: data/eval/final_gold_1000.jsonl
+format: jsonl
+id_field: id
+question_field: question
+response_options_field: response_options
+gold_errors_field: known_errors
+is_flawed_field: is_flawed

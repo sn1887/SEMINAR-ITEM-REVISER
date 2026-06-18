@@ -45,5 +45,5 @@ For a GPU Hugging Face model test, edit `slurm/eval_gpu_hf.sbatch` and set the m
 1. Run `python scripts/smoke_test.py` locally to check schema/control flow.
 2. Move to LRZ.
 3. Run `experiment.max_items=5` on a local model.
-4. Run the full 200-item evaluation.
+4. Run the full default gold evaluation.
 5. Save outputs and copy metrics into your meeting protocol.

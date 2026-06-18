@@ -10,7 +10,8 @@ The repository follows a research-lab style setup:
 - Immutable experiment outputs saved under `outputs/` by Hydra.
 - Model backends are swappable through config, not hard-coded paths.
 - Agent prompts are selected through config and stored as editable Markdown templates.
-- A 200-item synthetic seed evaluation set is included under `data/eval/test_set_200_seed.jsonl`.
+- A 1,000-item gold evaluation set is included under `data/eval/final_gold_1000.jsonl`.
+- The older 200-item synthetic seed set remains available under `data/eval/test_set_200_seed.jsonl`.
 - Evaluation produces machine-readable predictions, metrics, and a human-readable report.
 - Seminar progress documentation is integrated under `docs/` and `reports/`.
 
@@ -93,7 +94,7 @@ Run the local control-flow smoke test:
 python scripts/smoke_test.py
 ```
 
-Evaluate the included 200-item seed set:
+Evaluate the default 1,000-item gold set:
 
 ```bash
 python scripts/evaluate.py \
@@ -113,6 +114,14 @@ outputs/2026-06-06/12-00-00/
 ├── predictions.jsonl
 ├── metrics.json
 └── report.md
+```
+
+For faster development runs, override the data config to use the older seed set:
+
+```bash
+python scripts/evaluate.py \
+  data=eval_200 \
+  experiment.max_items=20
 ```
 
 ---
@@ -239,3 +248,43 @@ When enabled, prediction rows include an `orchestration_trace` plus flattened
 evaluation fields for route, router decision, taxonomy labels, confidence,
 selected agent, retry count, validation status, and final status. See
 `docs/orchestration_usage.md` for the full config and prompt customization guide.
+
+---
+
+## 7. MLflow progress logging
+
+When `tracking.enabled=true`, evaluation now opens the MLflow run before the item
+loop and logs partial metrics as the run progresses. The default interval is
+every 5 completed items:
+
+```yaml
+tracking:
+  log_progress_every_items: 5
+```
+
+Override this for longer or shorter runs:
+
+```bash
+python scripts/evaluate.py tracking.log_progress_every_items=10
+```
+
+Set `tracking.log_progress_every_items=0` to return to final-only metric logging.
+
+---
+
+## 8. Failure-resilient evaluation
+
+Long model benchmarks continue when a single item produces malformed JSON, a
+schema mismatch, or another item-level model error. The failed item is written to
+`predictions.jsonl` with an `error` block, left unchanged, and counted in
+`failed_items` and `failure_rate`.
+
+```yaml
+evaluator:
+  continue_on_item_error: true
+  write_predictions_incrementally: true
+  include_error_traceback: true
+```
+
+Set `evaluator.continue_on_item_error=false` when debugging and you want the run
+to stop at the first invalid model response.

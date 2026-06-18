@@ -303,15 +303,30 @@ class OrchestrationTrace:
 
 
 @dataclass
+class PipelineError:
+    error_type: str
+    message: str
+    stage: str = "pipeline"
+    traceback: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
 class PipelineResult:
     item_id: str
     original_item: SurveyItem
     detected_errors: list[CheckResult]
     revised_item: RevisedItem
     orchestration_trace: OrchestrationTrace | None = None
+    error: PipelineError | None = None
 
     def predicted_categories(self) -> list[str]:
         return sorted({error.category for error in self.detected_errors})
+
+    def failed(self) -> bool:
+        return self.error is not None
 
     def to_dict(self) -> dict[str, Any]:
         data = {
@@ -324,4 +339,6 @@ class PipelineResult:
         if self.orchestration_trace is not None:
             data["orchestration_trace"] = self.orchestration_trace.to_dict()
             data["orchestration"] = self.orchestration_trace.to_evaluation_fields()
+        if self.error is not None:
+            data["error"] = self.error.to_dict()
         return data

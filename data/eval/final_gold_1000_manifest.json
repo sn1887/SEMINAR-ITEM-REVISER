@@ -1,0 +1,224 @@
+{
+  "artifact_name": "final_gold_1000",
+  "dataset_name": "final_gold_1000",
+  "dataset_path": "data/eval/final_gold_1000.jsonl",
+  "dataset_sha256": "8107c6277d40085cfc7f58b094d96431841bdc645a8ecfef8298d2ad1b0ab52a",
+  "schema_version": "1.0.0",
+  "created_at_utc": "2026-06-16T18:46:46+00:00",
+  "source_dataset": {
+    "path": "data/processed/candidate_v1_2000.jsonl",
+    "dataset_name": "candidate_v1_2000",
+    "dataset_sha256": "379eec4e2ba38436c7e220af83f14518d448278901a408b859645e5e0fcd0294",
+    "manifest_path": "data/processed/candidate_v1_2000_manifest.json",
+    "summary_path": "data/processed/candidate_v1_2000_summary.md",
+    "rubric_path": "data/processed/candidate_v1_rubric.md",
+    "review_queue_path": "data/processed/candidate_v1_review_queue.jsonl"
+  },
+  "source_reference_files": [
+    {
+      "path": "seminar-material/Willem E. Saris, Irmtraud N. Gallhofer-Design, Evaluation, and Analysis of Questionnaires for Survey Research-Wiley (2014).pdf",
+      "sha256": "82f49bda471b0cf498a26bce867ef247aec1f19a00682b56f4b4644386d6d7ce"
+    },
+    {
+      "path": "seminar-material/Questionnaire Design_LMU_1.pptx",
+      "sha256": "5c02fcd4a294caeb0449c52124b7f736814fc02f2512450e9103292a28a86ca2"
+    },
+    {
+      "path": "seminar-material/Agentic Survey Items Generator Overview.pdf",
+      "sha256": "25bd801f8d2e08e734769f53a83265a4ad8a20a93605debc8ed3da0f7a64391f"
+    },
+    {
+      "path": "seminar-material/Protocol Meeting Abdul Samad-v1.docx",
+      "sha256": "70901f687f628016df9d5feac817978f02d3904d7a131941e77ffb8cd4070fcf"
+    },
+    {
+      "path": "seminar-material/Protocol Meeting Abdul Samad.docx",
+      "sha256": "51a7cd637c76c2a3b27bff10e3093808eeb64e7cc53cdf61223cc6034c9261de"
+    },
+    {
+      "path": "seminar-material/item_reviser_meeting_deck.tex",
+      "sha256": "3bb9d43bd9641e5ca0047f306cb54a75627c18de6ff816a824c40e8c4a8ce66e"
+    },
+    {
+      "path": "docs/source_notes.md",
+      "sha256": "0150c7ae166d9fdf6fcc6d101fc83febee1b6e176360a60806c934e7e81ece1e"
+    },
+    {
+      "path": "docs/literature_checklist.md",
+      "sha256": "8329e9638813d9b0f773cd9125efc571b29dd0b6394f494dfb12ffe66eaf500d"
+    }
+  ],
+  "selection_method": {
+    "clean_controls": "first 200 non-flawed rows in candidate order",
+    "single_label_per_taxonomy": 40,
+    "multi_per_combo": 10,
+    "multi_combo_count": 16,
+    "random_seed": "deterministic",
+    "combo_order": [
+      [
+        "leading_question",
+        "unbalanced_scale"
+      ],
+      [
+        "unbalanced_scale",
+        "missing_scale_labels"
+      ],
+      [
+        "missing_scale_labels",
+        "too_many_scale_points"
+      ],
+      [
+        "too_many_scale_points",
+        "agree_disagree_scale"
+      ],
+      [
+        "agree_disagree_scale",
+        "negative_wording"
+      ],
+      [
+        "negative_wording",
+        "polarity_mismatch"
+      ],
+      [
+        "polarity_mismatch",
+        "incomplete_options"
+      ],
+      [
+        "incomplete_options",
+        "non_exclusive_options"
+      ],
+      [
+        "non_exclusive_options",
+        "open_closed_mismatch"
+      ],
+      [
+        "open_closed_mismatch",
+        "loaded_question"
+      ],
+      [
+        "loaded_question",
+        "sensitive_topic_direct"
+      ],
+      [
+        "sensitive_topic_direct",
+        "social_desirability"
+      ],
+      [
+        "social_desirability",
+        "vague_ambiguous"
+      ],
+      [
+        "vague_ambiguous",
+        "recall_error"
+      ],
+      [
+        "recall_error",
+        "double_barreled"
+      ],
+      [
+        "double_barreled",
+        "leading_question"
+      ]
+    ]
+  },
+  "target_composition": {
+    "total_rows": 1000,
+    "clean_controls": 200,
+    "single_label_rows": 640,
+    "multi_label_rows": 160,
+    "single_per_label_target": 40,
+    "multi_appearances_per_label_target": 20
+  },
+  "actual_composition": {
+    "total_rows": 1000,
+    "clean_controls": 200,
+    "single_label_rows": 640,
+    "multi_label_rows": 160,
+    "label_counts": {
+      "agree_disagree_scale": 60,
+      "double_barreled": 60,
+      "incomplete_options": 60,
+      "leading_question": 60,
+      "loaded_question": 60,
+      "missing_scale_labels": 60,
+      "negative_wording": 60,
+      "non_exclusive_options": 60,
+      "open_closed_mismatch": 60,
+      "polarity_mismatch": 60,
+      "recall_error": 60,
+      "sensitive_topic_direct": 60,
+      "social_desirability": 60,
+      "too_many_scale_points": 60,
+      "unbalanced_scale": 60,
+      "vague_ambiguous": 60
+    },
+    "difficulty_distribution": {
+      "borderline": 332,
+      "obvious": 334,
+      "realistic": 334
+    },
+    "topic_distribution": {
+      "education": 81,
+      "environment": 47,
+      "family/household": 69,
+      "finances": 69,
+      "health": 130,
+      "labor": 78,
+      "media/culture": 65,
+      "mobility": 82,
+      "politics/public policy": 48,
+      "public services": 83,
+      "sensitive behaviors": 49,
+      "technology": 78,
+      "university life": 60,
+      "work": 61
+    },
+    "response_format_distribution": {
+      "binary_yes_no": 113,
+      "categorical_closed_ended": 112,
+      "filter_question": 82,
+      "frequency": 132,
+      "likert_agreement": 122,
+      "numeric_ranges": 122,
+      "open_ended": 72,
+      "ordinal_categories": 162,
+      "support_oppose": 83
+    }
+  },
+  "validation": {
+    "command": "python scripts/validate_eval_set.py data/eval/final_gold_1000.jsonl",
+    "status": "passed",
+    "exit_code": 0,
+    "output_lines": [
+      "Dataset path: data/eval/final_gold_1000.jsonl",
+      "Dataset schema version: 1.0.0",
+      "Dataset hash: 8107c6277d40085cfc7f58b094d96431841bdc645a8ecfef8298d2ad1b0ab52a",
+      "Items: 1000",
+      "Returned records (after max_items): 1000",
+      "Clean controls: 200",
+      "Duplicate IDs: []",
+      "Category counts:",
+      "  agree_disagree_scale: 60",
+      "  double_barreled: 60",
+      "  incomplete_options: 60",
+      "  leading_question: 60",
+      "  loaded_question: 60",
+      "  missing_scale_labels: 60",
+      "  negative_wording: 60",
+      "  non_exclusive_options: 60",
+      "  open_closed_mismatch: 60",
+      "  polarity_mismatch: 60",
+      "  recall_error: 60",
+      "  sensitive_topic_direct: 60",
+      "  social_desirability: 60",
+      "  too_many_scale_points: 60",
+      "  unbalanced_scale: 60",
+      "  vague_ambiguous: 60"
+    ],
+    "validated_at_utc": "2026-06-16T18:46:53+00:00"
+  },
+  "manual_review_status": {
+    "status": "completed_manual_curator_assembly",
+    "needs_external_human_audit": true
+  }
+}

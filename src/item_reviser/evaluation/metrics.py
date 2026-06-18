@@ -74,8 +74,9 @@ def compute_detection_metrics(
     for item, result in zip(items, results, strict=True):
         gold = set(item.known_errors)
         pred = set(result.predicted_categories())
+        failed = result.failed()
 
-        if gold == pred:
+        if not failed and gold == pred:
             exact += 1
 
         for c in pred & gold:
@@ -113,6 +114,8 @@ def compute_detection_metrics(
         has_expected = bool(expected_q) or bool(expected_opts)
         if has_expected:
             revision_items += 1
+            if failed:
+                continue
             revised_question = result.revised_item.question
             revised_options = result.revised_item.response_options
 

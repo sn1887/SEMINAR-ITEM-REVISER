@@ -13,6 +13,9 @@ def write_markdown_report(path: str | Path, metrics: dict[str, Any]) -> None:
         "## Summary metrics",
         "",
         f"- Items: {metrics.get('num_items')}",
+        f"- Successful items: {metrics.get('successful_items', metrics.get('num_items', 0))}",
+        f"- Failed items: {metrics.get('failed_items', 0)}",
+        f"- Failure rate: {metrics.get('failure_rate', 0):.3f}",
         f"- Precision: {metrics.get('precision', 0):.3f}",
         f"- Recall: {metrics.get('recall', 0):.3f}",
         f"- F1: {metrics.get('f1', 0):.3f}",
@@ -30,6 +33,20 @@ def write_markdown_report(path: str | Path, metrics: dict[str, Any]) -> None:
     ]
     for cat, counts in metrics.get("by_category", {}).items():
         lines.append(f"| {cat} | {counts.get('tp', 0)} | {counts.get('fp', 0)} | {counts.get('fn', 0)} |")
+
+    failures = metrics.get("failures", {})
+    if failures and failures.get("count", 0):
+        lines.extend(
+            [
+                "",
+                "## Evaluation failures",
+                "",
+                "| Error type | Count |",
+                "|---|---:|",
+            ]
+        )
+        for error_type, count in failures.get("types", {}).items():
+            lines.append(f"| {error_type} | {count} |")
 
     revision_quality = metrics.get("revision_quality", {})
     if revision_quality:

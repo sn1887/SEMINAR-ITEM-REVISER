@@ -7,7 +7,7 @@ This repository implements an advanced but manageable solo project for the semin
 The design supports three phases:
 
 1. **Agent prototype**: LLM-backed quality checking and revision.
-2. **Benchmark phase**: compare multiple local LRZ models on the same 200-item evaluation set.
+2. **Benchmark phase**: compare multiple local LRZ models on the same gold evaluation set.
 3. **Audit phase**: manually review model outputs and taxonomy boundaries.
 
 ## Research-repository principles
@@ -61,7 +61,7 @@ Hydra records the prompt setup in every run directory.
 
 For the next check-in, the repository should demonstrate:
 
-- end-to-end execution on the seed 200-item evaluation set,
+- end-to-end execution on the default gold evaluation set,
 - a clear error taxonomy,
 - initial model metrics,
 - a plan for manual auditing of the test set,

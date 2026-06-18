@@ -1,7 +1,7 @@
 defaults:
   - experiment: item_reviser_eval
   - model: hf_local
-  - data: eval_200
+  - data: final_gold_1000
   - agent: item_reviser
   - evaluator: default
   - prompt: default
@@ -22,6 +22,9 @@ tracking:
   tracking_uri: null
   experiment_name: seminar-item-reviser
   run_name: null
+  # Log partial metrics every N completed eval items while the run is still active.
+  # Set to 0 to disable progress metric logging and keep final-only logging.
+  log_progress_every_items: 5
 
 hydra:
   job:
