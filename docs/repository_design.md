@@ -44,7 +44,7 @@ Hydra makes it easy to run:
 ```bash
 python scripts/evaluate.py model=hf_local model.model_path=/path/to/model
 python scripts/evaluate.py model=hf_local model.decoding.method=sampling model.decoding.temperature=0.7
-python scripts/evaluate.py prompt.quality_checker.template_path=prompts/agents/quality_checker.md
+python scripts/evaluate.py prompt.quality_checker.template_path=prompts/agents/baseline/quality_checker.md
 ```
 
 This is useful because model choice, decoding, and prompt versions should remain
@@ -53,9 +53,11 @@ experimental variables, not code edits.
 ## Prompt registry
 
 The active prompt registry is declared under `configs/prompt/`. Prompt bodies stay
-in Markdown files under `prompts/agents/`, while config controls template paths,
-retry count, and timeout per agent. This keeps prompts easy to edit and ensures
-Hydra records the prompt setup in every run directory.
+in Markdown files under `prompts/agents/baseline/` for the non-orchestrated path
+and `prompts/agents/orchestration/` for the router, planner, specialists,
+fallback reviser, and validator. Config controls template paths, retry count, and
+timeout per agent. This keeps prompts easy to edit and ensures Hydra records the
+prompt setup in every run directory.
 
 ## Expected next-week progress
 

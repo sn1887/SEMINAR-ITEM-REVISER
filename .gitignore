@@ -18,11 +18,8 @@ mlruns/
 *.pt
 *.ckpt
 
-# Local data scratch
+# Local scratch
 scratch/
-data/raw/*
-!data/raw/.gitkeep
-data/processed/*
 
 # Editors
 .vscode/

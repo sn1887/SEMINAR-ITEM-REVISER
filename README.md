@@ -169,11 +169,11 @@ template each agent uses:
 ```yaml
 prompt:
   quality_checker:
-    template_path: ${paths.prompt_dir}/agents/quality_checker.md
+    template_path: ${paths.prompt_dir}/agents/baseline/quality_checker.md
     max_retries: 3
     timeout_seconds: 120
   item_reviser:
-    template_path: ${paths.prompt_dir}/agents/item_reviser.md
+    template_path: ${paths.prompt_dir}/agents/baseline/item_reviser.md
     max_retries: 3
     timeout_seconds: 120
 ```
@@ -184,7 +184,7 @@ This makes prompt versions easy to compare:
 python scripts/evaluate.py \
   model=hf_local \
   model.model_path=/path/to/model \
-  prompt.quality_checker.template_path=prompts/agents/quality_checker.md
+  prompt.quality_checker.template_path=prompts/agents/baseline/quality_checker.md
 ```
 
 Prompt templates use simple `$placeholder` substitution for fields such as
@@ -214,8 +214,10 @@ python scripts/evaluate.py \
 
 Orchestration behavior is configured in `configs/orchestration/default.yaml`.
 Agent prompt slots live in `configs/prompt/default.yaml` and point to Markdown
-templates under `prompts/agents/`, including `router`, `revision_planner`,
-`fallback_reviser`, the five specialist families, and `validator`.
+templates under `prompts/agents/orchestration/`, including `router`,
+`revision_planner`, `fallback_reviser`, the five specialist families, and
+`validator`. The non-orchestrated quality checker and item reviser prompts live
+under `prompts/agents/baseline/`.
 
 The baseline non-orchestrated pipeline also has runtime knobs in
 `configs/agent/item_reviser.yaml`, including:

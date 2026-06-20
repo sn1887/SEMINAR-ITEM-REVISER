@@ -16,10 +16,14 @@ def main() -> None:
     prompt_dir = Path(os.getenv("PROMPT_DIR", "prompts"))
     prompt_config = {
         "quality_checker": {
-            "template_path": str(prompt_dir / "agents" / "quality_checker.md"),
+            "template_path": str(
+                prompt_dir / "agents" / "baseline" / "quality_checker.md"
+            ),
         },
         "item_reviser": {
-            "template_path": str(prompt_dir / "agents" / "item_reviser.md"),
+            "template_path": str(
+                prompt_dir / "agents" / "baseline" / "item_reviser.md"
+            ),
         },
     }
     item = SurveyItem(question="Don’t you agree that stricter environmental regulations are necessary?")

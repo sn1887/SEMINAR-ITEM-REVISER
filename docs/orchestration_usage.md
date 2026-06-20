@@ -74,7 +74,7 @@ The baseline non-orchestrated pipeline also has Hydra runtime controls in
 ## Prompt Customization
 
 Prompt slots are configured in `configs/prompt/default.yaml` and point to
-Markdown templates in `prompts/agents/`:
+Markdown templates in `prompts/agents/orchestration/`:
 
 - `router`
 - `revision_planner`
@@ -88,6 +88,12 @@ Markdown templates in `prompts/agents/`:
 
 Each prompt receives an injected JSON schema through `${output_schema}` and must
 return strict JSON only. The Python agents do not hardcode prompt text.
+
+The non-orchestrated baseline prompts are kept separately in
+`prompts/agents/baseline/`:
+
+- `quality_checker`
+- `item_reviser`
 
 Common placeholders include:
 
