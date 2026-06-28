@@ -98,6 +98,13 @@ class SurveyItem:
             return value.strip().lower() in {"1", "true", "yes", "y"}
         return bool(value)
 
+    def model_input(self) -> dict[str, Any]:
+        """Return the only item fields allowed in model-facing prompts."""
+        return {
+            "question": self.question,
+            "response_options": list(self.response_options),
+        }
+
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
@@ -332,6 +339,21 @@ class PipelineResult:
         data = {
             "item_id": self.item_id,
             "original_item": self.original_item.to_dict(),
+            "detected_errors": [e.to_dict() for e in self.detected_errors],
+            "predicted_categories": self.predicted_categories(),
+            "revised_item": self.revised_item.to_dict(),
+        }
+        if self.orchestration_trace is not None:
+            data["orchestration_trace"] = self.orchestration_trace.to_dict()
+            data["orchestration"] = self.orchestration_trace.to_evaluation_fields()
+        if self.error is not None:
+            data["error"] = self.error.to_dict()
+        return data
+
+    def to_blind_dict(self, *, opaque_id: str) -> dict[str, Any]:
+        data = {
+            "item_id": opaque_id,
+            "original_item": self.original_item.model_input(),
             "detected_errors": [e.to_dict() for e in self.detected_errors],
             "predicted_categories": self.predicted_categories(),
             "revised_item": self.revised_item.to_dict(),

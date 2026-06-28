@@ -228,6 +228,7 @@ def _build_command(
     tracking_uri: str,
     max_items_override: int | str | None = None,
     warmup: bool = False,
+    include_gold: bool = False,
 ) -> list[str]:
     tracking_run_name = f"{run.run_name}__warmup" if warmup else run.run_name
     args = [
@@ -244,6 +245,8 @@ def _build_command(
     max_items = max_items_override if max_items_override is not None else run.max_items
     if max_items != "all" and max_items is not None:
         args.append(f"experiment.max_items={max_items}")
+    if include_gold:
+        args.append("evaluator.include_gold=true")
 
     args.extend(
         [
@@ -366,6 +369,7 @@ def run_phase(
     status_file: Path,
     run_root: Path,
     tracking_uri: str,
+    include_gold: bool,
 ) -> list[dict[str, Any]]:
     runs = _build_runs(phase, model_root)
     completed = _load_completed(status_file) if resume else set()
@@ -393,6 +397,7 @@ def run_phase(
             tracking_uri=tracking_uri,
             max_items_override=1,
             warmup=True,
+            include_gold=include_gold,
         )
         warmup_success, warmup_status = _run_once(
             run=run,
@@ -422,6 +427,7 @@ def run_phase(
                 tracking_uri=tracking_uri,
                 max_items_override=None,
                 warmup=False,
+                include_gold=include_gold,
             )
             success, last_status = _run_once(
                 run=run,
@@ -460,6 +466,11 @@ def main() -> None:
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--no-resume", action="store_false", dest="resume")
     parser.add_argument("--run-root", default="")
+    parser.add_argument(
+        "--include-gold",
+        action="store_true",
+        help="Write gold/source IDs and scoring fields to prediction artifacts.",
+    )
     parser.set_defaults(resume=True)
     args = parser.parse_args()
 
@@ -481,6 +492,7 @@ def main() -> None:
         status_file=status_file,
         run_root=run_root,
         tracking_uri=tracking_uri,
+        include_gold=args.include_gold,
     )
 
     summary = {

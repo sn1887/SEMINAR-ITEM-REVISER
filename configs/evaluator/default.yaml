@@ -22,3 +22,10 @@ write_predictions_incrementally: true
 
 # Include Python tracebacks in failed prediction rows for post-run debugging.
 include_error_traceback: true
+
+# Keep prediction/review artifacts blinded by default. Set true only for
+# explicit internal debugging runs that need source IDs and gold fields.
+include_gold: false
+
+# Seed used for deterministic stratified sampling when experiment.max_items is set.
+sampling_seed: ${seed}

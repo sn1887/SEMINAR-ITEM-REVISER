@@ -33,11 +33,7 @@ class ItemReviserAgent(BaseAgent):
             {
                 "allowed_categories": _format_allowed_categories(),
                 "output_schema": REVISER_OUTPUT_SCHEMA,
-                "item_id": item.id,
-                "question": item.question,
-                "response_options": item.response_options,
-                "target_concept": item.target_concept or "unknown",
-                "topic": item.topic or "unknown",
+                **item.model_input(),
                 "detected_categories": categories,
                 "detected_issues": [error.to_dict() for error in errors],
             }

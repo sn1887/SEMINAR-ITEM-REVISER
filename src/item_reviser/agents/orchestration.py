@@ -111,11 +111,11 @@ SPECIALIST_SCOPES = {
         "completeness, exclusivity, labels, point counts, and polarity."
     ),
     "construct_alignment": (
-        "Construct preservation and alignment between the target concept and the item."
+        "Construct preservation and alignment using only the item text and options."
     ),
     "bias_sensitivity": (
-        "Sensitive topics, social desirability pressure, privacy, normalization, and "
-        "respondent comfort."
+        "Sensitive subject matter, social desirability pressure, privacy, "
+        "normalization, and respondent comfort."
     ),
     "questionnaire_format": (
         "Questionnaire format fit, especially open/closed response mode alignment."
@@ -169,12 +169,12 @@ def _validation_criteria(detected_errors: list[CheckResult]) -> list[str]:
     if not detected_errors:
         return [
             "The original item is acceptable as an unchanged questionnaire item.",
-            "The candidate preserves the target construct.",
+            "The candidate preserves the construct expressed by the original item.",
             "The candidate introduces no obvious questionnaire-quality issue.",
         ]
     return [
         "The candidate fixes the detected issue.",
-        "The candidate preserves the target construct.",
+        "The candidate preserves the construct expressed by the original item.",
         "The candidate introduces no obvious new questionnaire-quality issue.",
     ]
 
@@ -214,11 +214,7 @@ class RouterAgent(BaseAgent):
                 "allowed_routes": ["accept", "revise", "fallback"],
                 "repair_families": sorted(REPAIR_FAMILIES),
                 "confidence_threshold": self.orchestration_config.confidence_threshold,
-                "item_id": item.id,
-                "question": item.question,
-                "response_options": item.response_options,
-                "target_concept": item.target_concept or "unknown",
-                "topic": item.topic or "unknown",
+                **item.model_input(),
             }
         )
         payload = self.model.complete_json(
@@ -253,11 +249,7 @@ class RevisionPlannerAgent(BaseAgent):
                 "repair_families": sorted(REPAIR_FAMILIES),
                 "suggested_repair_family": suggested_repair_family,
                 "suggested_agent": suggested_agent,
-                "item_id": item.id,
-                "question": item.question,
-                "response_options": item.response_options,
-                "target_concept": item.target_concept or "unknown",
-                "topic": item.topic or "unknown",
+                **item.model_input(),
                 "router_decision": router_decision.to_dict(),
                 "detected_categories": [error.category for error in detected_errors],
                 "detected_issues": [error.to_dict() for error in detected_errors],
@@ -275,7 +267,7 @@ class RevisionPlannerAgent(BaseAgent):
         if not plan.instructions:
             plan.instructions = [
                 "Fix the routed questionnaire-design issue.",
-                "Preserve the original target construct.",
+                "Preserve the construct expressed by the original item.",
             ]
         return plan
 
@@ -300,11 +292,7 @@ class FallbackReviserAgent(BaseAgent):
             {
                 "output_schema": ORCHESTRATED_REVISER_OUTPUT_SCHEMA,
                 "allowed_categories": _format_allowed_categories(),
-                "item_id": item.id,
-                "question": item.question,
-                "response_options": item.response_options,
-                "target_concept": item.target_concept or "unknown",
-                "topic": item.topic or "unknown",
+                **item.model_input(),
                 "detected_categories": [error.category for error in detected_errors],
                 "detected_issues": [error.to_dict() for error in detected_errors],
                 "router_decision": router_decision.to_dict(),
@@ -361,11 +349,7 @@ class SpecialistReviserAgent(BaseAgent):
                 "specialist_name": self.specialist_name,
                 "specialist_scope": SPECIALIST_SCOPES.get(self.family, self.family),
                 "repair_family": self.family,
-                "item_id": item.id,
-                "question": item.question,
-                "response_options": item.response_options,
-                "target_concept": item.target_concept or "unknown",
-                "topic": item.topic or "unknown",
+                **item.model_input(),
                 "detected_categories": [error.category for error in detected_errors],
                 "detected_issues": [error.to_dict() for error in detected_errors],
                 "router_decision": router_decision.to_dict(),
@@ -409,11 +393,7 @@ class ValidatorAgent(BaseAgent):
                 "output_schema": VALIDATOR_OUTPUT_SCHEMA,
                 "allowed_categories": _format_allowed_categories(),
                 "validation_criteria": _validation_criteria(detected_errors),
-                "item_id": item.id,
-                "question": item.question,
-                "response_options": item.response_options,
-                "target_concept": item.target_concept or "unknown",
-                "topic": item.topic or "unknown",
+                **item.model_input(),
                 "detected_categories": [error.category for error in detected_errors],
                 "detected_issues": [error.to_dict() for error in detected_errors],
                 "router_decision": router_decision.to_dict(),

@@ -5,17 +5,14 @@ ${specialist_scope}
 
 Task:
 Apply the revision plan to reduce social desirability pressure or overly direct
-sensitive-topic wording while preserving the target construct.
+sensitive wording while preserving the construct expressed by the item.
 
 Required output schema:
 ${output_schema}
 
 Original survey item:
-- id: ${item_id}
 - question: ${question}
 - response_options: ${response_options}
-- target_concept: ${target_concept}
-- topic: ${topic}
 
 Detected issues:
 ${detected_issues}
@@ -28,9 +25,6 @@ ${revision_plan}
 
 Retry instructions, if any:
 ${retry_instructions}
-
-Trace context:
-${trace_context}
 
 Instructions:
 1. Use neutral, nonjudgmental wording.

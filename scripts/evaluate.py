@@ -180,6 +180,7 @@ def main(cfg: DictConfig) -> None:
     set_seed(int(cfg.seed))
     model = build_model(cfg.model)
     max_items = cfg.experiment.get("max_items")
+    sampling_seed = int(cfg.evaluator.get("sampling_seed", cfg.seed))
     mlflow = _configure_mlflow_tracking(cfg)
 
     progress_logged_final = False
@@ -206,6 +207,8 @@ def main(cfg: DictConfig) -> None:
             include_error_traceback=bool(
                 cfg.evaluator.get("include_error_traceback", True)
             ),
+            include_gold=bool(cfg.evaluator.get("include_gold", False)),
+            sampling_seed=sampling_seed,
         )
     else:
         progress_interval = _tracking_progress_interval(cfg)
@@ -249,6 +252,8 @@ def main(cfg: DictConfig) -> None:
                 include_error_traceback=bool(
                     cfg.evaluator.get("include_error_traceback", True)
                 ),
+                include_gold=bool(cfg.evaluator.get("include_gold", False)),
+                sampling_seed=sampling_seed,
             )
         else:
             with active_run:
@@ -279,6 +284,8 @@ def main(cfg: DictConfig) -> None:
                     include_error_traceback=bool(
                         cfg.evaluator.get("include_error_traceback", True)
                     ),
+                    include_gold=bool(cfg.evaluator.get("include_gold", False)),
+                    sampling_seed=sampling_seed,
                     progress_callback=_log_progress if progress_interval > 0 else None,
                     progress_interval=progress_interval,
                 )

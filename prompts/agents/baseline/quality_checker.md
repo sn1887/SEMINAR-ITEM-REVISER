@@ -11,11 +11,8 @@ Required output schema:
 ${output_schema}
 
 Survey item:
-- id: ${item_id}
 - question: ${question}
 - response_options: ${response_options}
-- target_concept: ${target_concept}
-- topic: ${topic}
 
 Instructions:
 - Only use categories from the allowed list.

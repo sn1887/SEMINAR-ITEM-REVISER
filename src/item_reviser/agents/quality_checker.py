@@ -23,11 +23,7 @@ class QualityCheckerAgent(BaseAgent):
             {
                 "allowed_categories": _format_allowed_categories(),
                 "output_schema": CHECKER_OUTPUT_SCHEMA,
-                "item_id": item.id,
-                "question": item.question,
-                "response_options": item.response_options,
-                "target_concept": item.target_concept or "unknown",
-                "topic": item.topic or "unknown",
+                **item.model_input(),
             }
         )
         payload = self.model.complete_checker_output(

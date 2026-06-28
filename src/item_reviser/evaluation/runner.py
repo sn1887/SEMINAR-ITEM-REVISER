@@ -11,7 +11,10 @@ from tqdm import tqdm
 
 from item_reviser.agents.pipeline import ItemReviserPipeline
 from item_reviser.constants import CATEGORY_SEVERITY_WEIGHTS_BY_CATEGORY
-from item_reviser.evaluation.dataset import load_eval_dataset_with_metadata
+from item_reviser.evaluation.dataset import (
+    DEFAULT_SAMPLING_SEED,
+    load_eval_dataset_with_metadata,
+)
 from item_reviser.evaluation.metrics import compute_detection_metrics
 from item_reviser.evaluation.report import write_markdown_report
 from item_reviser.io import write_json, write_jsonl
@@ -25,6 +28,10 @@ from item_reviser.schemas import (
 )
 
 ProgressCallback = Callable[[int, int, dict[str, Any]], None]
+
+
+def _opaque_eval_id(index: int) -> str:
+    return f"eval-{index:06d}"
 
 
 def _summarize_orchestration(results: list[Any]) -> dict[str, Any]:
@@ -52,25 +59,44 @@ def _summarize_orchestration(results: list[Any]) -> dict[str, Any]:
     }
 
 
-def _summarize_failures(results: list[PipelineResult]) -> dict[str, Any]:
+def _artifact_item_id(result: PipelineResult, index: int, *, include_gold: bool) -> str:
+    return result.item_id if include_gold else _opaque_eval_id(index)
+
+
+def _summarize_failures(
+    results: list[PipelineResult],
+    *,
+    include_gold: bool,
+) -> dict[str, Any]:
     failed_results = [result for result in results if result.error is not None]
     failure_types = Counter(result.error.error_type for result in failed_results if result.error)
     failure_stages = Counter(result.error.stage for result in failed_results if result.error)
+    failure_items: list[dict[str, Any]] = []
+    for index, result in enumerate(results, start=1):
+        if result.error is None:
+            continue
+        item_id = _artifact_item_id(result, index, include_gold=include_gold)
+        message = result.error.message
+        if not include_gold:
+            message = _replace_source_id(
+                message,
+                source_id=result.item_id,
+                opaque_id=item_id,
+            )
+        failure_items.append(
+            {
+                "item_id": item_id,
+                "error_type": result.error.error_type,
+                "stage": result.error.stage,
+                "message": message,
+            }
+        )
     return {
         "count": len(failed_results),
         "rate": len(failed_results) / len(results) if results else 0.0,
         "types": dict(sorted(failure_types.items())),
         "stages": dict(sorted(failure_stages.items())),
-        "items": [
-            {
-                "item_id": result.item_id,
-                "error_type": result.error.error_type,
-                "stage": result.error.stage,
-                "message": result.error.message,
-            }
-            for result in failed_results
-            if result.error is not None
-        ],
+        "items": failure_items,
     }
 
 
@@ -136,10 +162,91 @@ def _failure_result(
     )
 
 
-def _write_prediction_record(path: Path, result: PipelineResult) -> None:
+def _replace_source_id(value: Any, *, source_id: str, opaque_id: str) -> Any:
+    if not source_id:
+        return value
+    if isinstance(value, str):
+        return value.replace(source_id, opaque_id)
+    if isinstance(value, list):
+        return [
+            _replace_source_id(item, source_id=source_id, opaque_id=opaque_id)
+            for item in value
+        ]
+    if isinstance(value, dict):
+        return {
+            str(key): _replace_source_id(
+                item,
+                source_id=source_id,
+                opaque_id=opaque_id,
+            )
+            for key, item in value.items()
+        }
+    return value
+
+
+def _blinded_original_item(item: SurveyItem, opaque_id: str) -> dict[str, Any]:
+    _ = opaque_id
+    return item.model_input()
+
+
+def _prediction_record(
+    result: PipelineResult,
+    *,
+    opaque_id: str,
+    include_gold: bool,
+) -> dict[str, Any]:
+    if include_gold:
+        return result.to_dict()
+
+    data: dict[str, Any] = {
+        "item_id": opaque_id,
+        "original_item": _blinded_original_item(result.original_item, opaque_id),
+        "detected_errors": [error.to_dict() for error in result.detected_errors],
+        "predicted_categories": result.predicted_categories(),
+        "revised_item": result.revised_item.to_dict(),
+    }
+    if result.orchestration_trace is not None:
+        data["orchestration_trace"] = result.orchestration_trace.to_dict()
+        data["orchestration"] = result.orchestration_trace.to_evaluation_fields()
+    if result.error is not None:
+        data["error"] = result.error.to_dict()
+    return _replace_source_id(
+        data,
+        source_id=result.item_id,
+        opaque_id=opaque_id,
+    )
+
+
+def _needs_manual_review_export(result: PipelineResult) -> bool:
+    if result.failed():
+        return True
+    trace = result.orchestration_trace
+    return trace is not None and trace.final_status == "manual_review"
+
+
+def _manual_review_record(result: PipelineResult, *, opaque_id: str) -> dict[str, Any]:
+    record = _prediction_record(result, opaque_id=opaque_id, include_gold=False)
+    trace = result.orchestration_trace
+    review_reason = None
+    if result.error is not None:
+        review_reason = result.error.message
+    elif trace is not None:
+        review_reason = trace.manual_review_reason
+    record["manual_review"] = {
+        "required": True,
+        "reason": _replace_source_id(
+            review_reason or "Pipeline flagged this item for manual review.",
+            source_id=result.item_id,
+            opaque_id=opaque_id,
+        ),
+    }
+    return record
+
+
+def _write_jsonl_record(path: Path, record: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(result.to_dict(), ensure_ascii=False, sort_keys=True) + "\n")
+        f.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
         f.flush()
 
 
@@ -149,6 +256,7 @@ def _compute_metrics(
     *,
     dataset_metadata: Any,
     use_severity_weighted_scoring: bool,
+    include_gold: bool,
 ) -> dict[str, Any]:
     category_weights = (
         CATEGORY_SEVERITY_WEIGHTS_BY_CATEGORY
@@ -163,11 +271,16 @@ def _compute_metrics(
     )
     metrics["dataset"] = dataset_metadata.to_dict()
     metrics["orchestration"] = _summarize_orchestration(results)
-    failures = _summarize_failures(results)
+    failures = _summarize_failures(results, include_gold=include_gold)
     metrics["failed_items"] = failures["count"]
     metrics["successful_items"] = len(results) - failures["count"]
     metrics["failure_rate"] = failures["rate"]
     metrics["failures"] = failures
+    metrics["artifacts"] = {
+        "prediction_id_mode": "source" if include_gold else "opaque",
+        "gold_in_prediction_rows": bool(include_gold),
+        "prediction_id_example": "source item id" if include_gold else _opaque_eval_id(1),
+    }
     return metrics
 
 
@@ -187,6 +300,8 @@ def run_evaluation(
     continue_on_item_error: bool = True,
     write_predictions_incrementally: bool = True,
     include_error_traceback: bool = True,
+    include_gold: bool = False,
+    sampling_seed: int = DEFAULT_SAMPLING_SEED,
 ) -> dict[str, Any]:
     if model is None:
         raise ValueError("run_evaluation requires an LLM model.")
@@ -194,7 +309,11 @@ def run_evaluation(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    items, dataset_metadata = load_eval_dataset_with_metadata(data_path, max_items=max_items)
+    items, dataset_metadata = load_eval_dataset_with_metadata(
+        data_path,
+        max_items=max_items,
+        sampling_seed=sampling_seed,
+    )
     pipeline = ItemReviserPipeline(
         model=model,
         prompt_config=prompt_config,
@@ -207,11 +326,14 @@ def run_evaluation(
     results: list[PipelineResult] = []
     total_items = len(items)
     predictions_path = output_dir / "predictions.jsonl"
+    manual_review_path = output_dir / "manual_review.jsonl"
     if write_predictions and write_predictions_incrementally:
         predictions_path.parent.mkdir(parents=True, exist_ok=True)
         predictions_path.write_text("", encoding="utf-8")
+        manual_review_path.write_text("", encoding="utf-8")
 
     for index, item in enumerate(tqdm(items, desc="Evaluating", unit="item"), start=1):
+        opaque_id = _opaque_eval_id(index)
         try:
             result = pipeline.run(item)
         except Exception as exc:
@@ -230,7 +352,19 @@ def run_evaluation(
         results.append(result)
 
         if write_predictions and write_predictions_incrementally:
-            _write_prediction_record(predictions_path, result)
+            _write_jsonl_record(
+                predictions_path,
+                _prediction_record(
+                    result,
+                    opaque_id=opaque_id,
+                    include_gold=include_gold,
+                ),
+            )
+            if _needs_manual_review_export(result):
+                _write_jsonl_record(
+                    manual_review_path,
+                    _manual_review_record(result, opaque_id=opaque_id),
+                )
 
         should_report_progress = (
             progress_callback is not None
@@ -243,6 +377,7 @@ def run_evaluation(
                 results,
                 dataset_metadata=dataset_metadata,
                 use_severity_weighted_scoring=use_severity_weighted_scoring,
+                include_gold=include_gold,
             )
             progress_metrics["progress"] = {
                 "completed_items": index,
@@ -257,10 +392,36 @@ def run_evaluation(
         results,
         dataset_metadata=dataset_metadata,
         use_severity_weighted_scoring=use_severity_weighted_scoring,
+        include_gold=include_gold,
+    )
+    manual_review_count = sum(
+        1 for result in results if _needs_manual_review_export(result)
+    )
+    metrics["artifacts"]["manual_review_rows"] = manual_review_count
+    metrics["artifacts"]["manual_review_file"] = (
+        "manual_review.jsonl" if write_predictions else None
     )
 
     if write_predictions and not write_predictions_incrementally:
-        write_jsonl(output_dir / "predictions.jsonl", [r.to_dict() for r in results])
+        write_jsonl(
+            output_dir / "predictions.jsonl",
+            [
+                _prediction_record(
+                    result,
+                    opaque_id=_opaque_eval_id(index),
+                    include_gold=include_gold,
+                )
+                for index, result in enumerate(results, start=1)
+            ],
+        )
+        write_jsonl(
+            output_dir / "manual_review.jsonl",
+            [
+                _manual_review_record(result, opaque_id=_opaque_eval_id(index))
+                for index, result in enumerate(results, start=1)
+                if _needs_manual_review_export(result)
+            ],
+        )
     write_json(output_dir / "metrics.json", metrics)
     if write_report:
         write_markdown_report(output_dir / "report.md", metrics)

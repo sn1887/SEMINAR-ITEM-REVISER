@@ -19,11 +19,8 @@ Suggested agent:
 ${suggested_agent}
 
 Original survey item:
-- id: ${item_id}
 - question: ${question}
 - response_options: ${response_options}
-- target_concept: ${target_concept}
-- topic: ${topic}
 
 Router output:
 ${router_decision}
@@ -34,14 +31,11 @@ ${detected_issues}
 Retry instructions, if any:
 ${retry_instructions}
 
-Trace context:
-${trace_context}
-
 Instructions:
 1. Select the suggested repair family unless the router evidence makes that unsafe.
 2. Use `fallback` when labels conflict, context is missing, or construct preservation
    cannot be planned safely.
-3. Write concrete instructions for a reviser while preserving the target construct.
+3. Write concrete instructions for a reviser while preserving the construct expressed by the item.
 4. Do not introduce a rewrite here.
 
 Return strict JSON only.

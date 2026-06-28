@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import random
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 from pathlib import Path
@@ -9,15 +10,27 @@ from item_reviser.constants import DATASET_SCHEMA_VERSION, ERROR_CATEGORIES
 from item_reviser.schemas import SurveyItem
 
 
+DEFAULT_SAMPLING_SEED = 42
+SAMPLING_METHOD_FULL_DATASET = "full_dataset"
+SAMPLING_METHOD_STRATIFIED = "deterministic_stratified_by_flaw_status"
+
+
+def _opaque_eval_id(index: int) -> str:
+    return f"eval-{index:06d}"
+
+
 @dataclass
 class DatasetMetadata:
     path: str
     hash_algorithm: str
     hash: str
     schema_version: str
+    sampling_method: str
+    sampling_seed: int
     requested_max_items: int | None
     file_records: int
     returned_records: int
+    sampled_opaque_ids: list[str]
     duplicate_ids: list[str]
     missing_required_fields: list[str]
     malformed_rows: list[str]
@@ -90,13 +103,115 @@ def load_eval_dataset(
     max_items: int | None = None,
     *,
     taxonomy_categories: list[str] | None = None,
+    sampling_seed: int = DEFAULT_SAMPLING_SEED,
 ) -> list[SurveyItem]:
     items, _ = load_eval_dataset_with_metadata(
         path,
         max_items=max_items,
         taxonomy_categories=taxonomy_categories,
+        sampling_seed=sampling_seed,
     )
     return items
+
+
+def _truthy_bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y"}
+    return bool(value)
+
+
+def _is_flawed_for_sampling(item: SurveyItem) -> bool:
+    return bool(item.known_errors) or _truthy_bool(item.is_flawed)
+
+
+def _stratified_sample_counts(strata: dict[str, list[int]], max_items: int) -> dict[str, int]:
+    nonempty = {label: indices for label, indices in strata.items() if indices}
+    counts = {label: 0 for label in strata}
+    if max_items <= 0 or not nonempty:
+        return counts
+
+    total_items = sum(len(indices) for indices in nonempty.values())
+    if max_items >= total_items:
+        return {label: len(indices) for label, indices in strata.items()}
+
+    if max_items < len(nonempty):
+        largest_strata = sorted(
+            nonempty.items(),
+            key=lambda item: (-len(item[1]), item[0]),
+        )[:max_items]
+        for label, _ in largest_strata:
+            counts[label] = 1
+        return counts
+
+    counts.update({label: 1 for label in nonempty})
+    desired = {
+        label: max_items * len(indices) / total_items
+        for label, indices in nonempty.items()
+    }
+
+    for _ in range(max_items - len(nonempty)):
+        eligible = [
+            label
+            for label, indices in nonempty.items()
+            if counts[label] < len(indices)
+        ]
+        if not eligible:
+            break
+        label = max(
+            eligible,
+            key=lambda candidate: (
+                desired[candidate] - counts[candidate],
+                len(nonempty[candidate]),
+                candidate,
+            ),
+        )
+        counts[label] += 1
+    return counts
+
+
+def _sample_items(
+    items: list[SurveyItem],
+    max_items: int | None,
+    *,
+    sampling_seed: int,
+) -> tuple[list[SurveyItem], str]:
+    if max_items is None:
+        return items, SAMPLING_METHOD_FULL_DATASET
+    if max_items < 0:
+        raise ValueError("max_items must be non-negative when provided.")
+    if max_items >= len(items):
+        return items, SAMPLING_METHOD_FULL_DATASET
+
+    strata = {
+        "clean": [
+            index
+            for index, item in enumerate(items)
+            if not _is_flawed_for_sampling(item)
+        ],
+        "flawed": [
+            index
+            for index, item in enumerate(items)
+            if _is_flawed_for_sampling(item)
+        ],
+    }
+    counts = _stratified_sample_counts(strata, max_items)
+    rng = random.Random(sampling_seed)
+    selected_indices: list[int] = []
+    for label in sorted(strata):
+        indices = strata[label]
+        count = counts[label]
+        if count:
+            selected_indices.extend(rng.sample(indices, count))
+
+    selected_index_set = set(selected_indices)
+    sampled_items = [
+        item
+        for index, item in enumerate(items)
+        if index in selected_index_set
+    ]
+    return sampled_items, SAMPLING_METHOD_STRATIFIED
 
 
 def load_eval_dataset_with_metadata(
@@ -104,6 +219,7 @@ def load_eval_dataset_with_metadata(
     max_items: int | None = None,
     *,
     taxonomy_categories: list[str] | None = None,
+    sampling_seed: int = DEFAULT_SAMPLING_SEED,
 ) -> tuple[list[SurveyItem], DatasetMetadata]:
     path = Path(path)
     if not path.exists():
@@ -131,7 +247,7 @@ def load_eval_dataset_with_metadata(
     missing_required_fields: set[str] = set()
     items: list[SurveyItem] = []
     seen_ids: set[str] = set()
-    duplicate_ids: set[str] = set()
+    duplicate_source_ids: set[str] = set()
     unknown_categories: set[str] = set()
     allowed_categories = set(taxonomy_categories or ERROR_CATEGORIES)
 
@@ -143,7 +259,7 @@ def load_eval_dataset_with_metadata(
 
         item = _validate_and_build_item(row, record, errors, missing_required_fields)
         if item.id in seen_ids:
-            duplicate_ids.add(item.id)
+            duplicate_source_ids.add(item.id)
         else:
             seen_ids.add(item.id)
 
@@ -164,8 +280,12 @@ def load_eval_dataset_with_metadata(
             )
         raise ValueError("Dataset validation failed:\\n" + "\\n".join(details))
 
-    if max_items is not None:
-        items = items[:max_items]
+    sampling_seed = int(sampling_seed)
+    items, sampling_method = _sample_items(
+        items,
+        max_items,
+        sampling_seed=sampling_seed,
+    )
 
     digest = sha256(path.read_bytes()).hexdigest()
     metadata = DatasetMetadata(
@@ -173,10 +293,20 @@ def load_eval_dataset_with_metadata(
         hash_algorithm="sha256",
         hash=digest,
         schema_version=DATASET_SCHEMA_VERSION,
+        sampling_method=sampling_method,
+        sampling_seed=sampling_seed,
         requested_max_items=max_items,
         file_records=file_records,
         returned_records=len(items),
-        duplicate_ids=sorted(duplicate_ids),
+        sampled_opaque_ids=[
+            _opaque_eval_id(index)
+            for index, _ in enumerate(items, start=1)
+        ],
+        duplicate_ids=[
+            _opaque_eval_id(index)
+            for index, item in enumerate(items, start=1)
+            if item.id in duplicate_source_ids
+        ],
         missing_required_fields=sorted(missing_required_fields),
         malformed_rows=malformed_rows,
         unknown_categories=sorted(unknown_categories),

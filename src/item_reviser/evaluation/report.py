@@ -78,6 +78,19 @@ def write_markdown_report(path: str | Path, metrics: dict[str, Any]) -> None:
             ]
         )
 
+    artifacts = metrics.get("artifacts", {})
+    if artifacts:
+        lines.extend(
+            [
+                "",
+                "## Artifact mode",
+                "",
+                f"- Prediction IDs: {artifacts.get('prediction_id_mode', 'unknown')}",
+                f"- Gold/source fields in prediction rows: {artifacts.get('gold_in_prediction_rows', False)}",
+                f"- Manual-review rows: {artifacts.get('manual_review_rows', 0)}",
+            ]
+        )
+
     dataset_info = metrics.get("dataset", {})
     if dataset_info:
         lines.extend(

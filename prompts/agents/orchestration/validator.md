@@ -14,11 +14,8 @@ Validation criteria:
 ${validation_criteria}
 
 Original survey item:
-- id: ${item_id}
 - question: ${question}
 - response_options: ${response_options}
-- target_concept: ${target_concept}
-- topic: ${topic}
 
 Detected issues:
 ${detected_issues}
@@ -35,12 +32,9 @@ ${candidate_revision}
 Remaining retry budget:
 ${remaining_retry_budget}
 
-Trace context:
-${trace_context}
-
 Instructions:
 1. Return `pass` only if the candidate satisfies the validation criteria,
-   preserves the target construct, and introduces no obvious new
+   preserves the construct expressed by the item, and introduces no obvious new
    questionnaire-quality issue.
 2. Return `retry` when a focused retry can plausibly fix the candidate and retry
    budget remains.
