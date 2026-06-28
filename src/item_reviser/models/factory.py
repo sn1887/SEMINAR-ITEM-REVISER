@@ -31,6 +31,30 @@ def _nested_mapping(cfg: Mapping[str, Any], key: str) -> Mapping[str, Any]:
     return {}
 
 
+def _coerce_bool(value: Any, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+    return bool(value)
+
+
+def _nested_bool(
+    cfg: Mapping[str, Any],
+    nested: Mapping[str, Any],
+    key: str,
+    default: bool,
+) -> bool:
+    value = nested.get(key, cfg.get(key, default))
+    return _coerce_bool(value, default)
+
+
 def _get_decoding_value(
     cfg: Mapping[str, Any],
     decoding: Mapping[str, Any],
@@ -55,6 +79,23 @@ def _optional_positive_float(value: Any) -> float | None:
     return parsed if parsed > 0 else None
 
 
+def _sync_hf_local_runtime_config(cfg: object, model: HuggingFaceLocalModel) -> None:
+    if not isinstance(cfg, DictConfig):
+        return
+    OmegaConf.update(
+        cfg,
+        "chat_template.enable_thinking",
+        bool(model.enable_thinking),
+        force_add=True,
+    )
+    OmegaConf.update(
+        cfg,
+        "chat_template.supports_enable_thinking",
+        bool(model.supports_enable_thinking),
+        force_add=True,
+    )
+
+
 def build_model(cfg: object | None) -> BaseLLM:
     cfg_data = _coerce_cfg(cfg)
     backend = str(
@@ -69,15 +110,22 @@ def build_model(cfg: object | None) -> BaseLLM:
         if not model_path:
             raise ValueError("hf_local backend requires model_path.")
         decoding_cfg = _nested_mapping(cfg_data, "decoding")
+        chat_template_cfg = _nested_mapping(cfg_data, "chat_template")
         top_k = _get_decoding_value(cfg_data, decoding_cfg, "top_k", None)
         repetition_penalty = _get_decoding_value(
             cfg_data, decoding_cfg, "repetition_penalty", None
         )
-        return HuggingFaceLocalModel(
+        model = HuggingFaceLocalModel(
             model_path=model_path,
             trust_remote_code=bool(cfg_data.get("trust_remote_code", False)),
             device_map=cfg_data.get("device_map"),
             torch_dtype=str(cfg_data.get("torch_dtype", "auto")),
+            enable_thinking=_nested_bool(
+                cfg_data,
+                chat_template_cfg,
+                "enable_thinking",
+                False,
+            ),
             decoding_method=str(
                 _get_decoding_value(cfg_data, decoding_cfg, "method", "greedy")
             ),
@@ -93,6 +141,8 @@ def build_model(cfg: object | None) -> BaseLLM:
             repetition_penalty=_optional_positive_float(repetition_penalty),
             timeout_seconds=float(cfg_data.get("timeout_seconds", 120.0)),
         )
+        _sync_hf_local_runtime_config(cfg, model)
+        return model
 
     if backend == "openai_compatible":
         model_name = str(cfg_data.get("model_name", "")).strip()

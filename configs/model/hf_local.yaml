@@ -6,6 +6,9 @@ device_map: auto
 torch_dtype: auto
 timeout_seconds: 120
 
+chat_template:
+  enable_thinking: false
+
 # Supported methods: greedy, sampling, beam_search, beam_sample.
 decoding:
   method: greedy

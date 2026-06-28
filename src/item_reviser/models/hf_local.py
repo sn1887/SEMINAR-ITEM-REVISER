@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 from item_reviser.models.base import BaseLLM
@@ -22,6 +24,39 @@ def _parse_torch_dtype(raw: str | None) -> Any:
     raise ValueError(f"Unsupported torch dtype: {raw}")
 
 
+def _chat_template_supports_enable_thinking(model_path: str) -> bool:
+    path = Path(model_path)
+    if not path.exists():
+        return False
+
+    template_texts: list[str] = []
+    tokenizer_config = path / "tokenizer_config.json"
+    if tokenizer_config.exists():
+        try:
+            data = json.loads(tokenizer_config.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            data = {}
+        chat_template = data.get("chat_template")
+        if isinstance(chat_template, str):
+            template_texts.append(chat_template)
+        elif isinstance(chat_template, list):
+            for entry in chat_template:
+                if not isinstance(entry, dict):
+                    continue
+                template = entry.get("template")
+                if isinstance(template, str):
+                    template_texts.append(template)
+
+    jinja_template = path / "chat_template.jinja"
+    if jinja_template.exists():
+        try:
+            template_texts.append(jinja_template.read_text(encoding="utf-8"))
+        except OSError:
+            pass
+
+    return any("enable_thinking" in template for template in template_texts)
+
+
 class HuggingFaceLocalModel(BaseLLM):
     backend_name = "hf_local"
 
@@ -40,6 +75,7 @@ class HuggingFaceLocalModel(BaseLLM):
         repetition_penalty: float | None = None,
         max_new_tokens: int | None = 768,
         timeout_seconds: float | None = None,
+        enable_thinking: bool = False,
     ) -> None:
         super().__init__(
             timeout_seconds=timeout_seconds,
@@ -55,6 +91,9 @@ class HuggingFaceLocalModel(BaseLLM):
         self.top_k = top_k
         self.num_beams = num_beams
         self.repetition_penalty = repetition_penalty
+        self.requested_enable_thinking = bool(enable_thinking)
+        self.supports_enable_thinking = _chat_template_supports_enable_thinking(model_path)
+        self.enable_thinking = self.requested_enable_thinking and self.supports_enable_thinking
         self._model = None
         self._tokenizer = None
         self._processor = None
@@ -193,11 +232,15 @@ class HuggingFaceLocalModel(BaseLLM):
                     "content": [{"type": "text", "text": prompt}],
                 }
             ]
+            template_kwargs: dict[str, Any] = {
+                "tokenize": False,
+                "add_generation_prompt": True,
+            }
+            if self.supports_enable_thinking:
+                template_kwargs["enable_thinking"] = self.enable_thinking
             rendered_prompt = self._processor.apply_chat_template(
                 messages,
-                tokenize=False,
-                add_generation_prompt=True,
-                enable_thinking=False,
+                **template_kwargs,
             )
             inputs = self._processor(text=[rendered_prompt], return_tensors="pt")
         else:

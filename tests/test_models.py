@@ -1,7 +1,11 @@
+import json
 from types import SimpleNamespace
+
+from omegaconf import OmegaConf
 
 from item_reviser.agents.orchestration import REVISION_PLAN_OUTPUT_SCHEMA
 from item_reviser.models.base import BaseLLM, REVISER_OUTPUT_SCHEMA
+from item_reviser.models.factory import build_model
 from item_reviser.models.hf_local import HuggingFaceLocalModel
 
 
@@ -28,13 +32,53 @@ class BadThenGoodLLM(BaseLLM):
         )
 
 
-class RecordingPipeline:
+class FakeTensor:
+    shape = (1, 3)
+
+    def to(self, device: str):
+        _ = device
+        return self
+
+
+class FakeGeneratedIds:
+    def __getitem__(self, key):
+        _ = key
+        return self
+
+
+class RecordingModel:
     def __init__(self) -> None:
         self.kwargs = {}
 
-    def __call__(self, prompt: str, **kwargs):
+    def parameters(self):
+        yield SimpleNamespace(device="cpu")
+
+    def generate(self, **kwargs):
         self.kwargs = kwargs
-        return [{"generated_text": f"{prompt}answer"}]
+        return FakeGeneratedIds()
+
+
+class FakeTokenizer:
+    eos_token_id = 2
+
+    def __call__(self, prompt: str, return_tensors: str):
+        _ = prompt, return_tensors
+        return {"input_ids": FakeTensor()}
+
+    def batch_decode(
+        self,
+        generated_ids,
+        *,
+        skip_special_tokens: bool,
+        clean_up_tokenization_spaces: bool,
+    ):
+        _ = generated_ids, skip_special_tokens, clean_up_tokenization_spaces
+        return ["answer"]
+
+
+class TestableHuggingFaceLocalModel(HuggingFaceLocalModel):
+    def _load_pipeline(self) -> None:
+        return None
 
 
 def test_complete_json_retries_with_repair_prompt():
@@ -83,8 +127,8 @@ def test_complete_json_accepts_nullable_optional_string_fields():
 
 
 def test_hf_sampling_decoding_configures_generation_kwargs():
-    pipeline = RecordingPipeline()
-    model = HuggingFaceLocalModel(
+    recording_model = RecordingModel()
+    model = TestableHuggingFaceLocalModel(
         model_path="/tmp/model",
         decoding_method="sampling",
         temperature=0.8,
@@ -92,30 +136,89 @@ def test_hf_sampling_decoding_configures_generation_kwargs():
         top_k=40,
         max_new_tokens=32,
     )
-    model._pipeline = pipeline
-    model._tokenizer = SimpleNamespace(eos_token_id=2)
+    model._model = recording_model
+    model._tokenizer = FakeTokenizer()
 
     output = model.generate("prompt:")
 
     assert output == "answer"
-    assert pipeline.kwargs["do_sample"] is True
-    assert pipeline.kwargs["temperature"] == 0.8
-    assert pipeline.kwargs["top_p"] == 0.9
-    assert pipeline.kwargs["top_k"] == 40
-    assert pipeline.kwargs["max_new_tokens"] == 32
+    assert recording_model.kwargs["do_sample"] is True
+    assert recording_model.kwargs["temperature"] == 0.8
+    assert recording_model.kwargs["top_p"] == 0.9
+    assert recording_model.kwargs["top_k"] == 40
+    assert recording_model.kwargs["max_new_tokens"] == 32
 
 
 def test_hf_beam_search_configures_generation_kwargs():
-    pipeline = RecordingPipeline()
-    model = HuggingFaceLocalModel(
+    recording_model = RecordingModel()
+    model = TestableHuggingFaceLocalModel(
         model_path="/tmp/model",
         decoding_method="beam_search",
         num_beams=4,
     )
-    model._pipeline = pipeline
-    model._tokenizer = SimpleNamespace(eos_token_id=2)
+    model._model = recording_model
+    model._tokenizer = FakeTokenizer()
 
     model.generate("prompt:")
 
-    assert pipeline.kwargs["do_sample"] is False
-    assert pipeline.kwargs["num_beams"] == 4
+    assert recording_model.kwargs["do_sample"] is False
+    assert recording_model.kwargs["num_beams"] == 4
+
+
+def test_hf_thinking_config_resets_to_false_when_template_does_not_support_it(
+    tmp_path,
+):
+    model_dir = tmp_path / "plain-model"
+    model_dir.mkdir()
+    (model_dir / "tokenizer_config.json").write_text(
+        json.dumps({"chat_template": "{{ messages }}"}),
+        encoding="utf-8",
+    )
+    cfg = OmegaConf.create(
+        {
+            "backend": "hf_local",
+            "model_path": str(model_dir),
+            "chat_template": {"enable_thinking": True},
+        }
+    )
+
+    model = build_model(cfg)
+
+    assert isinstance(model, HuggingFaceLocalModel)
+    assert model.requested_enable_thinking is True
+    assert model.supports_enable_thinking is False
+    assert model.enable_thinking is False
+    assert cfg.chat_template.enable_thinking is False
+    assert cfg.chat_template.supports_enable_thinking is False
+
+
+def test_hf_thinking_config_stays_true_when_template_supports_it(tmp_path):
+    model_dir = tmp_path / "thinking-model"
+    model_dir.mkdir()
+    (model_dir / "tokenizer_config.json").write_text(
+        json.dumps(
+            {
+                "chat_template": (
+                    "{% if enable_thinking is defined and enable_thinking %}"
+                    "<think>{% endif %}"
+                )
+            }
+        ),
+        encoding="utf-8",
+    )
+    cfg = OmegaConf.create(
+        {
+            "backend": "hf_local",
+            "model_path": str(model_dir),
+            "chat_template": {"enable_thinking": True},
+        }
+    )
+
+    model = build_model(cfg)
+
+    assert isinstance(model, HuggingFaceLocalModel)
+    assert model.requested_enable_thinking is True
+    assert model.supports_enable_thinking is True
+    assert model.enable_thinking is True
+    assert cfg.chat_template.enable_thinking is True
+    assert cfg.chat_template.supports_enable_thinking is True
