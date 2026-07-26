@@ -1,25 +1,24 @@
-# final_gold_200_unique_v4_professor_review Bundle
+# Final Gold 200 v4
 
-This bundle contains the 200-item questionnaire-quality benchmark after applying the professor’s review.
+This folder contains the final 200-item gold benchmark after applying the
+professor review pass. It is intentionally kept small so readers can find the
+dataset without sorting through generation logs and audit scratch files.
 
-## Start here
+## Files
 
-- `final_gold_200_professor_feedback_changes_v4.md` — readable item-by-item resolution.
-- `final_gold_200_unique_v4_professor_review.pretty.json` — easiest full dataset file to inspect.
-- `final_gold_200_unique_v4_professor_review.csv` — flat analysis format; multiple labels in `known_errors` are pipe-separated.
-- `final_gold_200_unique_v4_professor_review.jsonl` — benchmark/inference format.
-- `final_gold_200_validation_v4_professor_review.json` — machine-readable validation results.
-- `final_gold_200_summary_v4_professor_review.md` — composition and label counts.
+- `final_gold_200_unique_v4.jsonl` - canonical benchmark/inference file.
+- `final_gold_200_unique_v4.csv` - spreadsheet view of the same 200 rows.
+- `final_gold_200_summary_v4.md` - composition, label counts, validation
+  summary, difficulty distribution, and topic distribution.
+- `README.md` - this guide.
 
-## Important methodological change
+## Notes
 
-The previous exact balance of 12 appearances per label is intentionally not retained. The professor identified additional independently valid flaws, so v4 prioritizes annotation validity over equal label exposure.
+The dataset keeps all 200 rows and the 40 clean / 160 flawed split. The earlier
+exact label balance is intentionally not preserved because the professor review
+identified additional independently valid flaws. Version 4 therefore prioritizes
+annotation validity over artificial per-label balance.
 
-## Review scope
-
-21 rows changed:
-- 6 clean-control wording/response repairs
-- 14 rows with additional labels or revised expected answers
-- 1 strengthened `open_closed_mismatch` example
-
-All 200 rows remain present, and all 40 clean controls have identical expected revisions.
+Generation traces, detailed audit files, source maps, duplicate pretty JSON, and
+intermediate review notes were removed from this final-facing folder to avoid
+confusing readers.
