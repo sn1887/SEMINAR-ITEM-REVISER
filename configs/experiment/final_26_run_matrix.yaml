@@ -1,0 +1,16 @@
+# Metadata for the preregistered final seminar matrix.  The submission wrapper
+# fills the per-row fields from experiments/final_26_run_manifest.jsonl.
+name: final_26_run_matrix
+description: Final 26-run P0/P1/P2 seminar experiment matrix on final gold v4.
+matrix_manifest: experiments/final_26_run_manifest.jsonl
+dataset_version: v4
+run_id: null
+matrix_block: null
+prompt_pack: null
+pipeline: null
+thinking: false
+git_commit: null
+write_predictions: true
+write_report: true
+max_items: null
+severity_weighted_scoring: true

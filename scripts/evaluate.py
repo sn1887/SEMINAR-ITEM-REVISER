@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = REPO_ROOT / "src"
@@ -61,6 +61,34 @@ def _flatten_params(
 
     # Keep params concise and stable for MLflow; skip complex nested objects.
     return {}
+
+
+def _semantic_revision_final_scalars(metrics: dict[str, Any]) -> dict[str, float]:
+    revision_quality = metrics.get("revision_quality", {})
+    if not isinstance(revision_quality, dict):
+        return {}
+    scalars: dict[str, float] = {}
+    for metric_name in ("question_bertscore_f1", "sari"):
+        metric = revision_quality.get(metric_name, {})
+        if not isinstance(metric, dict):
+            continue
+        value = metric.get("value")
+        if isinstance(value, bool | int | float):
+            scalars[f"revision_quality.{metric_name}.value"] = float(value)
+    return scalars
+
+
+def _git_status_short() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "status", "--short"], cwd=REPO_ROOT, text=True
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return ""
+
+
+def _debug_dirty_git_allowed() -> bool:
+    return os.getenv("ALLOW_DIRTY_GIT_FOR_DEBUG", "0") == "1"
 
 
 def _tracking_progress_interval(cfg: DictConfig) -> int:
@@ -147,6 +175,19 @@ def _log_mlflow_config_params(mlflow: Any, cfg: DictConfig) -> None:
     )
 
     mlflow.log_param("seed", int(cfg.seed))
+    try:
+        git_commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        git_commit = "unavailable"
+    git_status = _git_status_short()
+    mlflow.log_param("git.commit", git_commit)
+    mlflow.log_param("git.dirty", str(bool(git_status)).lower())
+    mlflow.log_param("git.dirty_file_count", str(len(git_status.splitlines()) if git_status else 0))
+    mlflow.log_param("git.dirty_allowed_for_debug", str(_debug_dirty_git_allowed()).lower())
+    if git_status and _debug_dirty_git_allowed() and callable(getattr(mlflow, "log_text", None)):
+        mlflow.log_text(git_status + "\n", "git_dirty_status.txt")
     mlflow.log_params(model_cfg)
     mlflow.log_params(data_cfg)
     mlflow.log_params(experiment_cfg)
@@ -166,11 +207,32 @@ def _log_mlflow_final_outputs(
 ) -> None:
     dataset_cfg = _flatten_params(metrics.get("dataset", {}), prefix="dataset")
     mlflow.log_params(dataset_cfg)
+    revision_quality = metrics.get("revision_quality", {})
+    metric_config = _flatten_params(
+        revision_quality.get("metric_config", {}), prefix="revision_metrics.config"
+    )
+    package_versions = _flatten_params(
+        revision_quality.get("package_versions", {}), prefix="revision_metrics.packages"
+    )
+    metric_identity = _flatten_params(
+        {"bertscore_hash": revision_quality.get("bertscore_hash")},
+        prefix="revision_metrics",
+    )
+    mlflow.log_params(metric_config)
+    mlflow.log_params(package_versions)
+    mlflow.log_params(metric_identity)
     if log_metrics:
         mlflow.log_metrics(
             _flatten_scalars(metrics),
             step=int(metrics.get("num_items", 0)),
         )
+    else:
+        final_semantic_scalars = _semantic_revision_final_scalars(metrics)
+        if final_semantic_scalars:
+            mlflow.log_metrics(
+                final_semantic_scalars,
+                step=int(metrics.get("num_items", 0)),
+            )
     if output_dir.exists():
         mlflow.log_artifacts(str(output_dir), artifact_path="outputs")
 
@@ -181,6 +243,10 @@ def main(cfg: DictConfig) -> None:
     model = build_model(cfg.model)
     max_items = cfg.experiment.get("max_items")
     sampling_seed = int(cfg.evaluator.get("sampling_seed", cfg.seed))
+    evaluation_mode = str(cfg.evaluator.get("mode", "end_to_end"))
+    revision_metric_config = OmegaConf.to_container(
+        cfg.evaluator.get("metric_config", {}), resolve=True
+    )
     mlflow = _configure_mlflow_tracking(cfg)
 
     progress_logged_final = False
@@ -209,6 +275,8 @@ def main(cfg: DictConfig) -> None:
             ),
             include_gold=bool(cfg.evaluator.get("include_gold", False)),
             sampling_seed=sampling_seed,
+            evaluation_mode=evaluation_mode,
+            revision_metric_config=revision_metric_config,
         )
     else:
         progress_interval = _tracking_progress_interval(cfg)
@@ -254,6 +322,8 @@ def main(cfg: DictConfig) -> None:
                 ),
                 include_gold=bool(cfg.evaluator.get("include_gold", False)),
                 sampling_seed=sampling_seed,
+                evaluation_mode=evaluation_mode,
+                revision_metric_config=revision_metric_config,
             )
         else:
             with active_run:
@@ -286,6 +356,8 @@ def main(cfg: DictConfig) -> None:
                     ),
                     include_gold=bool(cfg.evaluator.get("include_gold", False)),
                     sampling_seed=sampling_seed,
+                    evaluation_mode=evaluation_mode,
+                    revision_metric_config=revision_metric_config,
                     progress_callback=_log_progress if progress_interval > 0 else None,
                     progress_interval=progress_interval,
                 )

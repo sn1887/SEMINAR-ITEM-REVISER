@@ -32,6 +32,7 @@ The agent should return:
   "errors": [
     {
       "category": "leading_question",
+      "severity": "high",
       "explanation": "The wording suggests that agreement is the expected answer."
     }
   ],
@@ -43,6 +44,11 @@ The agent should return:
   }
 }
 ```
+
+Severity uses an impact scale: `low` means minor risk and the item is mostly
+answerable; `medium` means the issue likely affects interpretation or response
+quality; `high` means the issue likely invalidates measurement or makes responses
+misleading.
 
 The current implementation is an **LLM-agent evaluation scaffold**:
 
@@ -115,6 +121,12 @@ outputs/2026-06-06/12-00-00/
 ├── metrics.json
 └── report.md
 ```
+
+In `report.md`, metric prominence depends on `evaluator.mode`. End-to-end and
+detection-only runs foreground detector metrics such as precision, recall, F1,
+exact label-set match, and clean false-positive rate. Oracle-revision runs mark
+detection metrics as oracle-supplied and foreground semantic revision metrics
+instead. `metrics.json` records this under `metric_applicability`.
 
 For faster development runs, override the data config to use the older seed set:
 
@@ -191,6 +203,15 @@ Prompt templates use simple `$placeholder` substitution for fields such as
 `${question}`, `${response_options}`, `${allowed_categories}`, and
 `${detected_issues}`.
 
+The final matrix keeps `baseline_codebook` and `orchestration_codebook` as P0
+controls. P1 (`baseline_p1`, `orchestration_p1`) is additive: it preserves the
+P0 codebook, taxonomy boundaries, clean-item rules, severity guidance, routing
+behavior, and revision safeguards, then adds operational response-option rules.
+P2 (`baseline_p2`, `orchestration_p2`) preserves P1 and adds three independently
+authored calibration examples. All four are opt-in Hydra choices. P2 examples
+are automatically checked for exact and near overlap with v4 questions and gold
+revisions.
+
 ---
 
 ## 6. Optional LLM orchestration
@@ -218,6 +239,36 @@ templates under `prompts/agents/orchestration/`, including `router`,
 `revision_planner`, `fallback_reviser`, the five specialist families, and
 `validator`. The non-orchestrated quality checker and item reviser prompts live
 under `prompts/agents/baseline/`.
+
+Use the minimal zero-shot baseline:
+
+```bash
+python scripts/evaluate.py \
+  data=final_gold_200_v3_pure_loaded \
+  prompt=default \
+  orchestration.enabled=false \
+  evaluator.mode=end_to_end
+```
+
+Use the zero-shot codebook prompt:
+
+```bash
+python scripts/evaluate.py \
+  data=final_gold_200_v3_pure_loaded \
+  prompt=baseline_codebook \
+  orchestration.enabled=false \
+  evaluator.mode=end_to_end
+```
+
+Use the orchestrated codebook router/fallback prompts:
+
+```bash
+python scripts/evaluate.py \
+  data=final_gold_200_v3_pure_loaded \
+  prompt=orchestration_codebook \
+  orchestration.enabled=true \
+  evaluator.mode=end_to_end
+```
 
 The baseline non-orchestrated pipeline also has runtime knobs in
 `configs/agent/item_reviser.yaml`, including:
@@ -253,7 +304,28 @@ selected agent, retry count, validation status, and final status. See
 
 ---
 
-## 7. MLflow progress logging
+## 7. Evaluation modes
+
+`evaluator.mode` separates detection from revision:
+
+- `end_to_end`: current default; detect issues and revise from predicted issues.
+- `detection_only`: run only the checker or orchestration router and leave the
+  item unchanged. Semantic revision metrics and overcorrection are not applicable.
+- `oracle_revision`: skip detection, use dataset gold labels as detected issues,
+  and evaluate revision quality independent of detection. Detection metrics are
+  oracle-supplied audit values, not model-detection performance.
+
+Examples:
+
+```bash
+python scripts/evaluate.py data=final_gold_200_v3_pure_loaded evaluator.mode=detection_only
+python scripts/evaluate.py data=final_gold_200_v3_pure_loaded evaluator.mode=oracle_revision
+python scripts/evaluate.py data=final_gold_200_v3_pure_loaded evaluator.mode=end_to_end
+```
+
+---
+
+## 8. MLflow progress logging
 
 When `tracking.enabled=true`, evaluation now opens the MLflow run before the item
 loop and logs partial metrics as the run progresses. The default interval is
@@ -272,9 +344,21 @@ python scripts/evaluate.py tracking.log_progress_every_items=10
 
 Set `tracking.log_progress_every_items=0` to return to final-only metric logging.
 
+Semantic question-revision metrics are final-only: one cached CPU BERTScore
+scorer produces question BERTScore F1, while Evaluate's SARI scores source ->
+generated question against the gold revision. Response options have no semantic
+similarity metric because the available custom heuristic was not sufficiently
+validated for final reporting. Exact option match remains as a strict diagnostic
+that can under-credit valid alternatives. The metrics apply only to flawed rows
+with valid expected questions; they log coverage, failures, the BERTScore hash,
+Torch/Transformers/metric-library versions, and configuration to MLflow. See
+[the evaluation plan](docs/evaluation_plan.md) and
+[the final matrix](docs/final_26_experiment_matrix.md) for scales, limitations,
+and the 26-run schedule.
+
 ---
 
-## 8. Failure-resilient evaluation
+## 9. Failure-resilient evaluation
 
 Long model benchmarks continue when a single item produces malformed JSON, a
 schema mismatch, or another item-level model error. The failed item is written to

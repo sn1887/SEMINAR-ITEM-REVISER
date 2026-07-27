@@ -512,6 +512,124 @@ class OrchestratedItemReviser:
             retry_instructions=[],
         )
 
+    def detect_only(self, item: SurveyItem) -> PipelineResult:
+        trace = OrchestrationTrace(orchestration_enabled=True)
+        router_decision = self.router.route(item)
+        detected_errors = self._detected_errors_from_router(router_decision)
+        trace.router_decision = router_decision.decision
+        trace.taxonomy_labels = list(router_decision.taxonomy_labels)
+        trace.confidence = router_decision.confidence
+        trace.selected_agent = "router"
+        trace.validation_status = "skipped"
+        route, fallback_reason = self._select_route(router_decision)
+        trace.route = route
+        trace.fallback_reason = fallback_reason
+        trace.final_status = "accepted" if route == "accept" else "single_pass"
+        trace.add_attempt(
+            stage="router",
+            decision=router_decision.decision,
+            taxonomy_labels=router_decision.taxonomy_labels,
+            confidence=router_decision.confidence,
+            recommended_route=router_decision.recommended_route,
+            rationale=router_decision.rationale,
+            evaluation_mode="detection_only",
+        )
+        return PipelineResult(
+            item_id=item.id,
+            original_item=item,
+            detected_errors=detected_errors,
+            revised_item=_unchanged_item(
+                item,
+                note="Detection-only evaluation; item left unchanged.",
+            ),
+            orchestration_trace=trace,
+        )
+
+    def revise_with_errors(
+        self,
+        item: SurveyItem,
+        detected_errors: list[CheckResult],
+        *,
+        evaluation_mode: str = "oracle_revision",
+    ) -> PipelineResult:
+        if not detected_errors:
+            trace = OrchestrationTrace(
+                orchestration_enabled=True,
+                route="accept",
+                router_decision="accept",
+                taxonomy_labels=[],
+                confidence=1.0,
+                selected_agent="gold_oracle",
+                validation_status="skipped",
+                final_status="accepted",
+            )
+            trace.add_attempt(
+                stage=evaluation_mode,
+                decision="accept",
+                taxonomy_labels=[],
+                evaluation_mode=evaluation_mode,
+                rationale="No supplied labels were present; item was preserved unchanged.",
+            )
+            return PipelineResult(
+                item_id=item.id,
+                original_item=item,
+                detected_errors=[],
+                revised_item=_unchanged_item(
+                    item,
+                    note="Oracle-revision evaluation found no gold labels; item left unchanged.",
+                ),
+                orchestration_trace=trace,
+            )
+
+        router_decision = self._router_decision_from_detected_errors(
+            detected_errors,
+            evaluation_mode=evaluation_mode,
+        )
+        trace = OrchestrationTrace(orchestration_enabled=True)
+        trace.router_decision = router_decision.decision
+        trace.taxonomy_labels = list(router_decision.taxonomy_labels)
+        trace.confidence = router_decision.confidence
+        trace.add_attempt(
+            stage=evaluation_mode,
+            decision=router_decision.decision,
+            taxonomy_labels=router_decision.taxonomy_labels,
+            confidence=router_decision.confidence,
+            recommended_route=router_decision.recommended_route,
+            rationale=router_decision.rationale,
+            evaluation_mode=evaluation_mode,
+        )
+        route, fallback_reason = self._select_route(router_decision)
+        trace.route = route
+        trace.fallback_reason = fallback_reason
+        if route == "manual_review":
+            return self._manual_review_result(
+                item=item,
+                detected_errors=detected_errors,
+                revised_item=_unchanged_item(
+                    item,
+                    note="Oracle-revision routing requested manual review before revision.",
+                ),
+                trace=trace,
+                reason=fallback_reason or "Oracle-revision routing requested manual review.",
+            )
+        if route == "accept":
+            return self._run_accept_path(
+                item=item,
+                router_decision=router_decision,
+                detected_errors=detected_errors,
+                trace=trace,
+            )
+        return self._run_revision_loop(
+            item=item,
+            router_decision=router_decision,
+            detected_errors=detected_errors,
+            trace=trace,
+            route=route,
+            fallback_reason=fallback_reason or "Oracle-revision mode selected revision.",
+            retry_count=0,
+            retry_instructions=[],
+        )
+
     def _run_accept_path(
         self,
         *,
@@ -1006,6 +1124,33 @@ class OrchestratedItemReviser:
                 )
             )
         return detected
+
+    def _router_decision_from_detected_errors(
+        self,
+        detected_errors: list[CheckResult],
+        *,
+        evaluation_mode: str,
+    ) -> RouterDecision:
+        labels = [error.category for error in detected_errors]
+        return RouterDecision(
+            decision="revise",
+            taxonomy_labels=labels,
+            confidence=1.0,
+            evidence=f"Labels supplied by {evaluation_mode} evaluation mode.",
+            rationale=(
+                "Use supplied labels as detected issues for revision-quality "
+                "evaluation."
+            ),
+            recommended_route=self._recommended_route_for_labels(labels),
+        )
+
+    def _recommended_route_for_labels(self, labels: list[str]) -> str:
+        families = self._families_for_labels(labels)
+        if self._sequential_enabled() and len(labels) > 1:
+            return "sequential_specialists"
+        if families:
+            return families[0]
+        return "specialist"
 
     def _families_for_labels(self, labels: list[str]) -> list[str]:
         families: list[str] = []

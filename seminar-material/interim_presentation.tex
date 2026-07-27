@@ -1,6 +1,6 @@
 % !TEX program = pdflatex
 % Interim seminar presentation for the SEMINAR item-reviser benchmark.
-% Build from this folder with: pdflatex item_reviser_interim_presentation.tex
+% Build from this folder with: pdflatex interim_presentation.tex
 
 \documentclass[aspectratio=169,10pt]{beamer}
 
@@ -59,21 +59,48 @@
 \begin{frame}[plain]
 \centering
 \vspace{1.1cm}
-{\color{SeminarNavy}\Huge\bfseries Interim Results: LLM Item-Reviser Benchmark\par}
+{\color{SeminarNavy}\Huge\bfseries LLM Item-Reviser Seminar\par}
 \vspace{0.35cm}
-{\Large 18-experiment MLflow evaluation on the final 200-item gold set\par}
-\vspace{0.55cm}
+
 {\color{SeminarNavy}\rule{0.82\linewidth}{1.2pt}\par}
 \vspace{0.65cm}
-{\large Seminar presentation draft\par}
+{\large Seminar presentation Abdul Samad Najm\par}
 \vspace{0.3cm}
-{\normalsize Survey item quality checking and revision\par}
-\vspace{0.55cm}
 {\normalsize July 2026\par}
 \end{frame}
 
 % ============================================================
-\begin{frame}{Purpose of this interim presentation}
+\begin{frame}{Why survey-item revision matters}
+\begin{block}{Survey questions are measurement instruments}
+Small wording and response-option choices can change what respondents understand, what they feel comfortable reporting, and which answer they are able to select.
+\end{block}
+
+\vspace{2mm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.49\textwidth}
+\textbf{Common item-design risks}
+\begin{itemize}\tight
+  \item Leading or loaded wording
+  \item Double-barreled constructs
+  \item Sensitive questions asked too directly
+  \item Recall periods that are too demanding
+  \item Response scales that are incomplete or unbalanced
+\end{itemize}
+\end{column}
+\begin{column}{0.49\textwidth}
+\textbf{Why LLMs are interesting here}
+\begin{itemize}\tight
+  \item They can read item wording in context.
+  \item They can propose fluent rewrites.
+  \item They may scale questionnaire pretesting.
+  \item But they can also over-flag, over-revise, or apply the wrong taxonomy.
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================
+\begin{frame}{This week's evaluation question}
 \begin{block}{Goal}
 Evaluate whether a zero-shot LLM system can \textbf{detect} questionnaire-design flaws and \textbf{revise} flawed survey items while avoiding unnecessary changes to clean controls.
 \end{block}
@@ -95,13 +122,12 @@ Evaluate whether a zero-shot LLM system can \textbf{detect} questionnaire-design
   \item Main metric block: taxonomy-label detection
   \item Main system comparison: Qwen baseline vs. Qwen orchestrated
   \item Error analysis: under-performing categories and why
-  \item Design implication: LLM-only router vs. hybrid checks
+  \item Design implication: LLM-only routing vs. hybrid checks
 \end{itemize}
 \end{column}
 \end{columns}
 \end{frame}
 
-% ============================================================
 % ============================================================
 \begin{frame}{Benchmark dataset: final 200-item gold set}
 \begin{columns}[T,onlytextwidth]
@@ -136,9 +162,7 @@ Appearances per label & \textbf{12}\\
 \end{block}
 
 \vspace{2mm}
-\begin{alertblock}{Interim status}
-This is a structurally validated gold-candidate dataset, but final human/professor signoff is still recommended before calling it externally validated.
-\end{alertblock}
+
 \end{column}
 \end{columns}
 \end{frame}
@@ -207,24 +231,36 @@ The benchmark is not limited to one questionnaire domain. It tests whether the i
 \end{block}
 \end{frame}
 % ============================================================
-\begin{frame}{Two evaluation modes answer different questions}
+% ============================================================
+\begin{frame}{Three evaluation modes answer different questions}
+\small
 \begin{columns}[T,onlytextwidth]
 \begin{column}{0.32\textwidth}
 \begin{block}{Detection-only}
-Can the model identify known taxonomy labels?
+Can the model identify known issue labels or routes?
 \vspace{1mm}
 
 \textbf{No revision quality claim.}
 \end{block}
+\vspace{1mm}
+\begin{block}{Example}
+Predicts taxonomy/repair family.
+\end{block}
 \end{column}
+
 \begin{column}{0.32\textwidth}
 \begin{block}{Oracle-revision}
-Can the model revise when the gold flaw category is supplied?
+Can the model revise when gold error information is supplied?
 \vspace{1mm}
 
 \textbf{Isolates revision ability.}
 \end{block}
+\vspace{1mm}
+\begin{block}{Example}
+Given a known flaw family or label, evaluate only the rewrite.
+\end{block}
 \end{column}
+
 \begin{column}{0.32\textwidth}
 \begin{block}{End-to-end}
 Can the full system detect and revise without gold help?
@@ -232,15 +268,16 @@ Can the full system detect and revise without gold help?
 
 \textbf{Most realistic system test.}
 \end{block}
+\vspace{1mm}
+\begin{block}{Example}
+Predict issue route, revise item, then evaluate both.
+\end{block}
 \end{column}
 \end{columns}
 
-\vspace{4mm}
-\begin{alertblock}{Interpretation rule}
-Oracle-revision results should not be interpreted as detection performance. They answer a different question: revision quality under known-error conditions.
-\end{alertblock}
-\end{frame}
+\vspace{3mm}
 
+\end{frame}
 % ============================================================
 \begin{frame}{Baseline workflow}
 \centering
@@ -254,6 +291,7 @@ Oracle-revision results should not be interpreted as detection performance. They
 \end{frame}
 
 % ============================================================
+% ============================================================
 \begin{frame}{Metric definitions used in the analysis}
 \small
 \begin{tabularx}{\textwidth}{>{\bfseries}p{0.28\textwidth}X}
@@ -265,13 +303,15 @@ Exact match & Exact match of the predicted taxonomy-label set, not exact rewrite
 Clean false-positive rate & Fraction of clean controls where the model predicted at least one error label.\\
 Overcorrection rate & Fraction of clean controls where the output item was changed.\\
 Exact revision rate & Fraction of items whose rewritten question and options exactly match the expected revision.\\
+Question similarity & Text similarity between the revised question and the expected/reference revised question.\\
+Option Jaccard & Set overlap between revised response options and expected/reference response options.\\
 Failure rate & Fraction of items where parsing, schema, or pipeline failure was recorded.\\
 \bottomrule
 \end{tabularx}
 
 \vspace{3mm}
 \begin{alertblock}{Revision metric caveat}
-Exact revision rate is a harsh proxy. A valid rewrite can differ from the reference rewrite. Use it for diagnostics, not as the sole revision-quality measure.
+Revision-quality metrics are automatic proxy diagnostics. A valid rewrite can differ from the reference rewrite, so these metrics should support error analysis, not replace manual assessment.
 \end{alertblock}
 \end{frame}
 
@@ -301,7 +341,30 @@ Qwen 3.5 9B & orchestrated & 0.492 & \good{0.490} & 0.495 & \good{0.315} & \good
 Baseline Qwen is the strongest high-recall detector. Orchestrated Qwen is slightly lower on F1, but substantially better at avoiding false positives and unnecessary changes on clean controls.
 \end{block}
 \end{frame}
+% ============================================================
+\begin{frame}{Automatic revision-quality proxies: end-to-end}
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrr}
+\toprule
+Model & Pipeline & Exact revision & Question similarity & Option Jaccard & Changed rate\\
+\midrule
+Mistral 7B v0.3 & baseline & 0.015 & 0.677 & 0.278 & 1.000\\
+Mistral 7B v0.3 & orchestrated & 0.085 & 0.716 & 0.361 & 0.730\\
+Gemma 2 9B & baseline & 0.015 & 0.727 & 0.346 & 1.000\\
+Gemma 2 9B & orchestrated & 0.065 & 0.722 & 0.347 & 0.840\\
+\rowcolor{SeminarLightBlue}
+Qwen 3.5 9B & baseline & 0.155 & 0.763 & 0.396 & 0.730\\
+\rowcolor{SeminarLightBlue}
+Qwen 3.5 9B & orchestrated & \good{0.200} & \good{0.768} & \good{0.406} & 0.555\\
+\bottomrule
+\end{tabular}}
 
+\vspace{3mm}
+\begin{alertblock}{Interpretation}
+These are end-to-end output proxies over all 200 items, not pure revision-quality scores. Qwen orchestrated scores highest mainly because it preserves clean controls better and avoids overcorrection. For pure rewrite ability, use the oracle-revision results.
+\end{alertblock}
+\end{frame}
 % ============================================================
 \begin{frame}{End-to-end metric trade-off: why Qwen orchestrated matters}
 \begin{columns}[T,onlytextwidth]
@@ -359,28 +422,29 @@ Detection-only and end-to-end detection metrics are nearly identical. The revisi
 \end{block}
 \end{frame}
 
+
 % ============================================================
-\begin{frame}{Automatic revision-quality proxies}
+\begin{frame}{Automatic revision-quality proxies: oracle revision}
 \scriptsize
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{llrrrr}
 \toprule
 Model & Pipeline & Exact revision & Question similarity & Option Jaccard & Changed rate\\
 \midrule
-Mistral 7B v0.3 & baseline & 0.015 & 0.677 & 0.278 & 1.000\\
-Mistral 7B v0.3 & orchestrated & 0.085 & 0.716 & 0.361 & 0.730\\
-Gemma 2 9B & baseline & 0.015 & 0.727 & 0.346 & 1.000\\
-Gemma 2 9B & orchestrated & 0.065 & 0.722 & 0.347 & 0.840\\
 \rowcolor{SeminarLightBlue}
-Qwen 3.5 9B & baseline & 0.155 & 0.763 & 0.396 & 0.730\\
+Mistral 7B v0.3 & baseline & \good{0.220} & 0.745 & 0.417 & 0.800\\
+Mistral 7B v0.3 & orchestrated & 0.210 & 0.757 & 0.392 & 0.800\\
+Gemma 2 9B & baseline & 0.210 & 0.776 & 0.425 & 0.800\\
+Gemma 2 9B & orchestrated & 0.215 & 0.769 & 0.424 & 0.795\\
 \rowcolor{SeminarLightBlue}
-Qwen 3.5 9B & orchestrated & \good{0.200} & \good{0.768} & \good{0.406} & 0.555\\
+Qwen 3.5 9B & baseline & 0.215 & \good{0.787} & \good{0.451} & 0.745\\
+Qwen 3.5 9B & orchestrated & 0.215 & 0.770 & 0.432 & 0.775\\
 \bottomrule
 \end{tabular}}
 
 \vspace{3mm}
 \begin{alertblock}{Interpretation}
-Qwen orchestrated has the best automatic revision proxies, but exact revision matching remains strict. Manual revision scoring is still needed before making strong claims about final rewrite quality.
+This table uses all \textbf{200} items for denominator consistency with end-to-end results. It is not a pure flawed-item revision-quality score: the 40 clean controls contribute perfect unchanged matches to exact revision, question similarity, and option overlap. Qwen baseline has the strongest approximate similarity and option-overlap proxies; exact revision remains low and tightly clustered once clean-control preservation is accounted for.
 \end{alertblock}
 \end{frame}
 
@@ -425,7 +489,7 @@ Category & TP & FP & FN & F1\\
 
 \vspace{2mm}
 \begin{alertblock}{Main pattern}
-The router is strong on semantic flaws, but weak on mechanical scale and response-option defects.
+The router detects several salient cues well, but misses benchmark-specific scale and response-option rules.
 \end{alertblock}
 \end{frame}
 
@@ -453,7 +517,7 @@ Gold category & Qwen baseline TP / 12 & Qwen orchestrated TP / 12 & Interim inte
 
 \vspace{3mm}
 \begin{block}{Observation}
-The orchestrated pipeline improves safety on clean items, but its router is too permissive for several benchmark-specific mechanical categories.
+The orchestrated pipeline improves safety on clean items, but its router suppresses useful recall for several benchmark-specific mechanical categories.
 \end{block}
 \end{frame}
 
@@ -487,10 +551,6 @@ Ask directly about the construct, e.g., \emph{How important or unimportant is it
 \end{column}
 \end{columns}
 
-\vspace{2mm}
-\begin{block}{Implication}
-Add a project-specific override: \textbf{agree/disagree wording is a flaw in this benchmark} unless explicitly justified.
-\end{block}
 \end{frame}
 
 % ============================================================
@@ -528,7 +588,7 @@ Use non-overlapping ranges: Less than 1,000; 1,000-1,999; 2,000-2,999; 3,000 or 
 
 \vspace{2mm}
 \begin{block}{Implication}
-This is a deterministic rule, not an LLM reasoning task. Treat adjacent numeric ranges as inclusive unless explicitly marked otherwise.
+This is well suited to a deterministic pre-check: treat adjacent numeric ranges as inclusive unless explicitly marked otherwise.
 \end{block}
 \end{frame}
 
@@ -631,19 +691,18 @@ Open-ended questions may have an empty \cat{response_options} list. Do not flag 
 \begin{frame}{Bigger pattern from the prediction outputs}
 \begin{columns}[T,onlytextwidth]
 \begin{column}{0.48\textwidth}
-\begin{block}{Router is strong on semantic flaws}
+\begin{block}{High-recall categories}
 \begin{itemize}\tight
   \item \cat{leading_question}
   \item \cat{loaded_question}
   \item \cat{double_barreled}
-  \item \cat{social_desirability}
   \item \cat{polarity_mismatch}
   \item \cat{too_many_scale_points}
 \end{itemize}
 \end{block}
 \end{column}
 \begin{column}{0.48\textwidth}
-\begin{block}{Router is weak on mechanical checks}
+\begin{block}{Low-recall rule-like categories}
 \begin{itemize}\tight
   \item \cat{non_exclusive_options}
   \item \cat{unbalanced_scale}
@@ -657,85 +716,128 @@ Open-ended questions may have an empty \cat{response_options} list. Do not flag 
 
 \vspace{4mm}
 \begin{alertblock}{Central interpretation}
-The model is not failing randomly. It is often applying a different survey-design taxonomy than the benchmark and under-checking mechanical response-option rules.
+The model is not failing randomly. It often applies a different survey-design taxonomy than the benchmark and under-checks mechanical response-option rules.
 \end{alertblock}
 \end{frame}
 
 % ============================================================
 \section{Implications}
 
-\begin{frame}{Recommended next system: hybrid LLM + deterministic checks}
+% ============================================================
+% ============================================================
+\begin{frame}[t]{Recommended next experiment: few-shot prompting + Qwen reasoning mode}
+\scriptsize
+\vspace{-1mm}
+
 \begin{columns}[T,onlytextwidth]
+% ---------------- LEFT COLUMN ----------------
 \begin{column}{0.49\textwidth}
-\begin{block}{Deterministic pre-checkers}
+\begin{block}{Few-shot router prompt}
 \begin{itemize}\tight
-  \item \cat{agree_disagree_scale}
-  \item \cat{non_exclusive_options}
-  \item \cat{unbalanced_scale}
-  \item \cat{missing_scale_labels}
-  \item \cat{too_many_scale_points}
-  \item \cat{open_closed_mismatch}
+  \item Add short labeled examples before prediction.
+  \item Include correct labels and brief taxonomy rationales.
+  \item Emphasize boundaries where zero-shot Qwen failed.
+  \item Use held-out development examples, not the 200-item test set.
 \end{itemize}
 \end{block}
+
+\vspace{1mm}
+
+\begin{block}{Target weak categories}
+\centering
+\begin{tabular}{@{}ll@{}}
+\cat{agree_disagree_scale} & \cat{non_exclusive_options}\\
+\cat{unbalanced_scale} & \cat{open_closed_mismatch}\\
+\cat{sensitive_topic_direct} & \cat{missing_scale_labels}\\
+\end{tabular}
+\end{block}
 \end{column}
+
+% ---------------- RIGHT COLUMN ----------------
 \begin{column}{0.49\textwidth}
-\begin{block}{LLM router / reviser}
+\begin{block}{Qwen reasoning-mode ablation}
 \begin{itemize}\tight
-  \item \cat{leading_question}
-  \item \cat{loaded_question}
-  \item \cat{double_barreled}
-  \item \cat{social_desirability}
-  \item \cat{sensitive_topic_direct}
-  \item \cat{vague_ambiguous}
-  \item \cat{recall_error}
-  \item \cat{negative_wording}
-  \item \cat{polarity_mismatch}
+  \item Test Qwen 3.5 with reasoning enabled.
+  \item Keep dataset, prompts, schema, and metrics fixed.
+  \item Compare three settings:
+  \begin{itemize}\tight
+    \item zero-shot Qwen
+    \item few-shot Qwen
+    \item few-shot Qwen + reasoning mode
+  \end{itemize}
+  \item Log reasoning setting and output-failure rate.
+\end{itemize}
+\end{block}
+
+\vspace{1mm}
+
+\begin{block}{Few-shot reviser prompt}
+\begin{itemize}\tight
+  \item Show flawed item $\rightarrow$ corrected revision examples.
+  \item Preserve the measured construct.
+  \item Avoid overcorrecting clean controls.
+  \item Require the same JSON schema as the zero-shot run.
 \end{itemize}
 \end{block}
 \end{column}
 \end{columns}
 
-\vspace{3mm}
-\begin{alertblock}{Expected benefit}
-The rule-based layer should recover the zero-F1 mechanical categories without sacrificing the LLM's strong semantic detection and revision fluency.
-\end{alertblock}
-\end{frame}
+\vspace{1mm}
 
+\end{frame}
+\end{frame}
 % ============================================================
-\begin{frame}{Concrete prompt and checker updates}
+\begin{frame}{Few-shot prompt design for taxonomy alignment}
 \small
-\begin{block}{1. Agree/disagree override}
-In this benchmark, agree/disagree response formats are considered a flaw when a direct construct-specific scale is possible.
-\end{block}
-
-\begin{block}{2. Numeric range boundary rule}
-Treat numeric ranges as inclusive unless explicitly written otherwise. Adjacent ranges that reuse the same boundary value are overlapping.
-\end{block}
-
-\begin{block}{3. Scale-balance rule}
-A scale is unbalanced when one side has more intensity levels than the other side. A neutral midpoint does not make the scale balanced.
-\end{block}
-
-\begin{block}{4. Sensitive vs. loaded distinction}
-A sensitive yes/no question is not loaded merely because it asks whether the behavior occurred. Use \cat{loaded_question} only for presupposed premise, motive, blame, effect, or occurrence.
-\end{block}
-\end{frame}
-
-% ============================================================
-\begin{frame}{Threats to validity and caveats}
+\begin{block}{Example selection strategy}
 \begin{itemize}\tight
-  \item \textbf{Exact revision rate is conservative.} A good revision can be different from the reference answer.
-  \item \textbf{Manual revision scoring is still needed.} Automatic proxies should support error analysis, not replace human assessment.
-  \item \textbf{Block ordering should be randomized.} IDs are opaque, but row order is category-correlated.
-  \item \textbf{Report field bug:} manual-review count labels appear inconsistent with actual manual-review rows in some reports.
-  \item \textbf{Taxonomy specificity matters.} Several failures are best interpreted as taxonomy alignment failures, not general model incapacity.
+  \item Use \textbf{1--2 examples per weak category}.
+  \item Include at least one clean control example to prevent overcorrection.
+  \item Include near-miss pairs where two labels are easily confused.
+  \item Keep examples short so the prompt remains within context limits.
 \end{itemize}
+\end{block}
+
+\vspace{2mm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.48\textwidth}
+\begin{block}{Important contrast examples}
+\begin{itemize}\tight
+  \item \cat{loaded_question} vs. \cat{sensitive_topic_direct}
+  \item \cat{leading_question} vs. \cat{social_desirability}
+  \item \cat{agree_disagree_scale} vs. acceptable support--oppose scale
+  \item \cat{open_closed_mismatch} vs. valid open-ended item
+\end{itemize}
+\end{block}
+\end{column}
+
+\begin{column}{0.48\textwidth}
+\begin{block}{Mechanical examples}
+\begin{itemize}\tight
+  \item Overlapping numeric ranges:
+  \begin{itemize}\tight
+    \item \texttt{0--30}, \texttt{30--60}, \texttt{60--120}
+  \end{itemize}
+  \item Unbalanced scale:
+  \begin{itemize}\tight
+    \item three positive options, one neutral, one negative
+  \end{itemize}
+  \item Missing labels:
+  \begin{itemize}\tight
+    \item \texttt{1, 2, 3, 4, 5} without endpoint meanings
+  \end{itemize}
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
 \end{frame}
+% ============================================================
+
 
 % ============================================================
 \begin{frame}{Interim conclusion}
 \begin{block}{What the 18 experiments show}
-Qwen 3.5 9B is clearly the strongest model in this zero-shot benchmark. The baseline pipeline is the best high-recall detector; the orchestrated pipeline is the best practical end-to-end system because it reduces clean false positives, overcorrection, and failures.
+Qwen 3.5 9B is the strongest model in this zero-shot benchmark. The baseline pipeline is the best high-recall detector; the orchestrated pipeline is the strongest practical end-to-end candidate because it reduces clean false positives, overcorrection, and failures.
 \end{block}
 
 \begin{block}{What the item-level outputs show}
@@ -743,7 +845,7 @@ The largest remaining errors are systematic: agree/disagree items, overlapping n
 \end{block}
 
 \begin{alertblock}{Next step}
-Move from a purely LLM-backed router to a hybrid architecture: deterministic scale/option checkers plus LLM-based semantic routing and revision.
+Move from a Zero-Shot LLM-backed router to an in-context few-shot prompt architecture - Try Reasoning with Qwen 3.5.
 \end{alertblock}
 \end{frame}
 
@@ -774,18 +876,88 @@ Oracle-revision mode isolates revision under known labels. It does not measure d
 \end{frame}
 
 % ============================================================
-\begin{frame}{Backup: recommended reporting language}
-\small
-\begin{block}{Suggested phrasing}
-Qwen 3.5 9B achieved the strongest zero-shot performance overall. The baseline pipeline produced the highest micro-F1 and recall, while the orchestrated pipeline substantially reduced clean-item false positives and overcorrection, improved exact label-set match, avoided parse failures, and achieved the strongest automatic revision-proxy scores. Therefore, Qwen baseline is the best high-recall detector, while Qwen orchestrated is the strongest practical end-to-end item-revision system.
+\begin{frame}{Backup: additional end-to-end diagnostics}
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrr}
+\toprule
+Model & Pipeline & Macro-F1 & Missed-error rate & Clean label preserved & Clean unchanged\\
+\midrule
+Mistral 7B v0.3 & baseline & 0.147 & 0.000 & 0.000 & 0.000\\
+Mistral 7B v0.3 & orchestrated & 0.065 & 0.244 & 0.375 & 0.375\\
+Gemma 2 9B & baseline & 0.351 & 0.000 & 0.000 & 0.000\\
+Gemma 2 9B & orchestrated & 0.292 & 0.131 & 0.275 & 0.275\\
+\rowcolor{SeminarLightBlue}
+Qwen 3.5 9B & baseline & \good{0.561} & 0.131 & 0.750 & 0.775\\
+\rowcolor{SeminarLightBlue}
+Qwen 3.5 9B & orchestrated & 0.431 & 0.312 & \good{0.900} & \good{0.925}\\
+\bottomrule
+\end{tabular}}
+
+\vspace{3mm}
+\begin{block}{How to read this slide}
+\textbf{Macro-F1} averages F1 over the 16 labels. \textbf{Missed-error rate} is the fraction of flawed items with no predicted label. \textbf{Clean label preserved} is $1-$clean false-positive rate. \textbf{Clean unchanged} is $1-$overcorrection rate.
 \end{block}
 
-\begin{alertblock}{Important qualifier}
-Revision-quality claims should remain provisional until the revised items are manually scored for construct preservation, clarity, response-option quality, and absence of new flaws.
+\begin{alertblock}{Caveat}
+A low missed-error rate can be misleading when a model over-flags nearly everything. Read it together with precision, clean preservation, and macro-F1.
 \end{alertblock}
 \end{frame}
 
 % ============================================================
+\begin{frame}{Backup: orchestrator route diagnostics}
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrrr}
+\toprule
+Model & Accept route & Specialist route & Fallback route & Manual review & Avg. retries & Clean accept\\
+\midrule
+Mistral 7B v0.3 & 54 (27.0\%) & 136 (68.0\%) & 10 (5.0\%) & 35 (17.5\%) & 0.225 & 15/40 (37.5\%)\\
+Gemma 2 9B & 32 (16.0\%) & 144 (72.0\%) & 24 (12.0\%) & 2 (1.0\%) & 0.075 & 11/40 (27.5\%)\\
+\rowcolor{SeminarLightBlue}
+Qwen 3.5 9B & 86 (43.0\%) & 22 (11.0\%) & 92 (46.0\%) & 10 (5.0\%) & 0.105 & \good{36/40 (90.0\%)}\\
+\bottomrule
+\end{tabular}}
+
+\vspace{3mm}
+\begin{block}{What this adds beyond F1}
+The route table shows whether orchestration is actually using the intended control flow: immediate accepts, specialist repair, fallback repair, validator retries, and final manual-review outcomes.
+\end{block}
+
+\begin{alertblock}{Interpretation}
+Qwen orchestrated is much better at accepting clean controls, but it also routes many flawed items to fallback and misses more flawed items entirely.
+\end{alertblock}
+\end{frame}
+
+% ============================================================
+\begin{frame}{Backup: end-to-end runtime and throughput}
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrr}
+\toprule
+Model & Pipeline & Slurm elapsed & Avg. / item & Items / hour\\
+\midrule
+Mistral 7B v0.3 & baseline & 00:20:52 & 6.26s & 575.1\\
+Mistral 7B v0.3 & orchestrated & 00:34:11 & 10.26s & 351.0\\
+Gemma 2 9B & baseline & 00:31:17 & 9.38s & 383.6\\
+Gemma 2 9B & orchestrated & 01:05:36 & 19.68s & 182.9\\
+Qwen 3.5 9B & baseline & 00:59:35 & 17.88s & 201.4\\
+Qwen 3.5 9B & orchestrated & 01:20:59 & 24.30s & 148.2\\
+\bottomrule
+\end{tabular}}
+
+\vspace{3mm}
+\begin{block}{Measurement note}
+Average time is computed from Slurm elapsed time over 200 items, so it includes model loading, generation, parsing, metrics, artifact writing, and logging overhead.
+\end{block}
+
+\begin{alertblock}{Practical implication}
+Orchestration improves clean-item safety, but it adds latency. This trade-off matters for larger benchmark runs and future production-style pretesting.
+\end{alertblock}
+\end{frame}
+
+% ============================================================
+
 \begin{frame}{Backup: ranking summary}
 \begin{columns}[T,onlytextwidth]
 \begin{column}{0.32\textwidth}

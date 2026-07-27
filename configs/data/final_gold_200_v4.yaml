@@ -1,0 +1,9 @@
+name: final_gold_200_v4
+version: v4
+path: data/final_gold_200_v4/final_gold_200_unique_v4.jsonl
+format: jsonl
+id_field: id
+question_field: question
+response_options_field: response_options
+gold_errors_field: known_errors
+is_flawed_field: is_flawed

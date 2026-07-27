@@ -1,0 +1,49 @@
+# Opt-in P2 few-shot extension of the orchestration P1 response-option rules.
+name: orchestration_p2
+
+# Retained schema slots; unused by the orchestrated pipeline.
+quality_checker:
+  template_path: ${paths.prompt_dir}/agents/baseline_codebook/quality_checker.md
+  max_retries: 3
+  timeout_seconds: 120
+item_reviser:
+  template_path: ${paths.prompt_dir}/agents/baseline_codebook/item_reviser.md
+  max_retries: 3
+  timeout_seconds: 120
+
+router:
+  template_path: ${paths.prompt_dir}/agents/orchestration_p2/router.md
+  max_retries: 3
+  timeout_seconds: 120
+revision_planner:
+  template_path: ${paths.prompt_dir}/agents/orchestration/revision_planner.md
+  max_retries: 3
+  timeout_seconds: 120
+fallback_reviser:
+  template_path: ${paths.prompt_dir}/agents/orchestration_p2/fallback_reviser.md
+  max_retries: 3
+  timeout_seconds: 120
+wording_clarity:
+  template_path: ${paths.prompt_dir}/agents/orchestration/specialist_wording_clarity.md
+  max_retries: 3
+  timeout_seconds: 120
+response_options_scale:
+  template_path: ${paths.prompt_dir}/agents/orchestration_p2/specialist_response_options_scale.md
+  max_retries: 3
+  timeout_seconds: 120
+construct_alignment:
+  template_path: ${paths.prompt_dir}/agents/orchestration/specialist_construct_alignment.md
+  max_retries: 3
+  timeout_seconds: 120
+bias_sensitivity:
+  template_path: ${paths.prompt_dir}/agents/orchestration/specialist_bias_sensitivity.md
+  max_retries: 3
+  timeout_seconds: 120
+questionnaire_format:
+  template_path: ${paths.prompt_dir}/agents/orchestration/specialist_questionnaire_format.md
+  max_retries: 3
+  timeout_seconds: 120
+validator:
+  template_path: ${paths.prompt_dir}/agents/orchestration_p2/validator.md
+  max_retries: 3
+  timeout_seconds: 120

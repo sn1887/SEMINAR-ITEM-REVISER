@@ -1,5 +1,11 @@
 # Error taxonomy for the item-reviser project.
 # This file is a config-level mirror of src/item_reviser/constants.py.
+# Severity levels are item-specific annotations, not fixed category properties.
+# low: minor risk; item mostly answerable.
+# medium: likely affects interpretation or response quality.
+# high: likely invalidates measurement or makes responses misleading.
+# Severity reflects expected measurement harm, not model confidence, benchmark
+# difficulty, or revision effort.
 categories:
   leading_question:
     family: wording

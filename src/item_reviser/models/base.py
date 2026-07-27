@@ -60,7 +60,7 @@ CHECKER_OUTPUT_SCHEMA: dict[str, Any] = {
                 "additionalProperties": True,
                 "properties": {
                     "category": {"type": "string"},
-                    "severity": {"type": "string"},
+                    "severity": {"type": "string", "enum": ["low", "medium", "high"]},
                     "explanation": {"type": "string"},
                     "evidence": {"type": ["string", "null"]},
                     "suggestion": {"type": ["string", "null"]},

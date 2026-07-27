@@ -10,16 +10,21 @@ from typing import Any
 from tqdm import tqdm
 
 from item_reviser.agents.pipeline import ItemReviserPipeline
-from item_reviser.constants import CATEGORY_SEVERITY_WEIGHTS_BY_CATEGORY
+from item_reviser.constants import CATEGORY_SEVERITY_WEIGHTS_BY_CATEGORY, ERROR_CATEGORIES
 from item_reviser.evaluation.dataset import (
     DEFAULT_SAMPLING_SEED,
     load_eval_dataset_with_metadata,
 )
-from item_reviser.evaluation.metrics import compute_detection_metrics
+from item_reviser.evaluation.metrics import (
+    SemanticRevisionMetrics,
+    compute_detection_metrics,
+    metric_config_from_mapping,
+)
 from item_reviser.evaluation.report import write_markdown_report
 from item_reviser.io import write_json, write_jsonl
 from item_reviser.models.base import BaseLLM
 from item_reviser.schemas import (
+    CheckResult,
     OrchestrationTrace,
     PipelineError,
     PipelineResult,
@@ -28,6 +33,18 @@ from item_reviser.schemas import (
 )
 
 ProgressCallback = Callable[[int, int, dict[str, Any]], None]
+EVALUATION_MODES = {"detection_only", "oracle_revision", "end_to_end"}
+DETECTION_METRIC_KEYS = [
+    "true_positives",
+    "false_positives",
+    "false_negatives",
+    "precision",
+    "recall",
+    "f1",
+    "exact_match",
+    "false_positive_rate_on_clean_items",
+]
+OVERCORRECTION_METRIC_KEYS = ["overcorrection_rate"]
 
 
 def _opaque_eval_id(index: int) -> str:
@@ -112,6 +129,251 @@ def _config_get(config: object | None, key: str, default: Any = None) -> Any:
 
 def _orchestration_enabled(orchestration_config: object | None) -> bool:
     return bool(_config_get(orchestration_config, "enabled", False))
+
+
+def _validate_evaluation_mode(mode: str | None) -> str:
+    normalized = str(mode or "end_to_end").strip()
+    if normalized not in EVALUATION_MODES:
+        choices = ", ".join(sorted(EVALUATION_MODES))
+        raise ValueError(f"evaluator.mode must be one of: {choices}.")
+    return normalized
+
+
+def _unchanged_revision(item: SurveyItem, note: str) -> RevisedItem:
+    return RevisedItem(
+        question=item.question,
+        response_options=list(item.response_options),
+        revision_notes=[note],
+        changed=False,
+    )
+
+
+def _gold_errors_from_item(item: SurveyItem) -> list[CheckResult]:
+    return [
+        CheckResult(
+            category=category,
+            severity="medium",
+            explanation="Gold label supplied by oracle_revision evaluation mode.",
+            evidence=None,
+            suggestion=None,
+            checker="gold_oracle",
+        )
+        for category in item.known_errors
+        if category in ERROR_CATEGORIES
+    ]
+
+
+def _detection_only_result(
+    pipeline: ItemReviserPipeline,
+    item: SurveyItem,
+) -> PipelineResult:
+    if pipeline.orchestrator is not None:
+        return pipeline.orchestrator.detect_only(item)
+
+    errors = []
+    if pipeline.agent_config.use_llm_for_quality_checking:
+        errors = pipeline.quality_checker.check(item)
+    return PipelineResult(
+        item_id=item.id,
+        original_item=item,
+        detected_errors=errors,
+        revised_item=_unchanged_revision(
+            item,
+            "Detection-only evaluation; item left unchanged.",
+        ),
+    )
+
+
+def _oracle_revision_result(
+    pipeline: ItemReviserPipeline,
+    item: SurveyItem,
+) -> PipelineResult:
+    detected_errors = _gold_errors_from_item(item)
+    if not detected_errors:
+        trace = None
+        if pipeline.orchestrator is not None:
+            trace = OrchestrationTrace(
+                orchestration_enabled=True,
+                route="accept",
+                router_decision="accept",
+                taxonomy_labels=[],
+                confidence=1.0,
+                selected_agent="gold_oracle",
+                validation_status="skipped",
+                final_status="accepted",
+            )
+            trace.add_attempt(
+                stage="oracle_revision",
+                decision="accept",
+                taxonomy_labels=[],
+                evaluation_mode="oracle_revision",
+                rationale="No gold labels were present; item was preserved unchanged.",
+            )
+        return PipelineResult(
+            item_id=item.id,
+            original_item=item,
+            detected_errors=[],
+            revised_item=_unchanged_revision(
+                item,
+                "Oracle-revision evaluation found no gold labels; item left unchanged.",
+            ),
+            orchestration_trace=trace,
+        )
+
+    if pipeline.orchestrator is not None:
+        return pipeline.orchestrator.revise_with_errors(
+            item,
+            detected_errors,
+            evaluation_mode="oracle_revision",
+        )
+
+    if pipeline.agent_config.use_llm_for_revision:
+        revised = pipeline.item_reviser.revise(item, detected_errors)
+    else:
+        revised = _unchanged_revision(
+            item,
+            "Oracle-revision evaluation had gold labels but revision is disabled.",
+        )
+    return PipelineResult(
+        item_id=item.id,
+        original_item=item,
+        detected_errors=detected_errors,
+        revised_item=revised,
+    )
+
+
+def _run_item_for_mode(
+    pipeline: ItemReviserPipeline,
+    item: SurveyItem,
+    evaluation_mode: str,
+) -> PipelineResult:
+    if evaluation_mode == "detection_only":
+        return _detection_only_result(pipeline, item)
+    if evaluation_mode == "oracle_revision":
+        return _oracle_revision_result(pipeline, item)
+    return pipeline.run(item)
+
+
+def _take_metric_values(metrics: dict[str, Any], keys: list[str]) -> dict[str, Any]:
+    return {key: metrics.get(key) for key in keys}
+
+
+def _clear_metric_values(metrics: dict[str, Any], keys: list[str]) -> None:
+    for key in keys:
+        metrics[key] = None
+
+
+def _apply_mode_metric_applicability(
+    metrics: dict[str, Any],
+    evaluation_mode: str,
+) -> None:
+    metrics["metric_applicability"] = {
+        "detection": {
+            "status": "applicable",
+            "reason": "Predicted labels came from the evaluated detector.",
+        },
+        "revision_semantic": {
+            "status": "applicable",
+            "reason": (
+                "Generated revisions are compared with valid gold revisions on "
+                "gold-flawed items only."
+            ),
+        },
+        "overcorrection": {
+            "status": "applicable",
+            "reason": "Clean-item changes reflect end-to-end pipeline behavior.",
+        },
+    }
+    metrics["severity"] = {
+        "checker_output": "schema_enforced_low_medium_high",
+        "router_output": (
+            "router-derived detected errors use default severity='medium' until "
+            "the router schema emits issue-level severity"
+        ),
+    }
+    revision_quality = metrics.get("revision_quality", {})
+    if revision_quality.get("applicability") == "not_applicable":
+        metrics["metric_applicability"]["revision_semantic"] = {
+            "status": "not_applicable",
+            "reason": revision_quality.get("reason", "Semantic metrics were not configured."),
+        }
+    elif revision_quality.get("applicability") == "pending":
+        metrics["metric_applicability"]["revision_semantic"] = {
+            "status": "pending",
+            "reason": revision_quality.get("reason", "Awaiting final semantic scoring."),
+        }
+
+    if evaluation_mode == "oracle_revision":
+        metrics["oracle_supplied_detection_metrics"] = _take_metric_values(
+            metrics,
+            DETECTION_METRIC_KEYS + OVERCORRECTION_METRIC_KEYS,
+        )
+        _clear_metric_values(
+            metrics,
+            DETECTION_METRIC_KEYS + OVERCORRECTION_METRIC_KEYS,
+        )
+        metrics["by_category_oracle_supplied"] = metrics.get("by_category", {})
+        metrics["by_category"] = {}
+        metrics["severity_weighted_oracle_supplied"] = metrics.get(
+            "severity_weighted",
+            {},
+        )
+        metrics["severity_weighted"] = {
+            "enabled": False,
+            "applicability": "oracle_supplied_detection",
+        }
+        metrics["metric_applicability"]["detection"] = {
+            "status": "oracle_supplied",
+            "reason": (
+                "Gold labels were injected as detected issues, so detection "
+                "precision/recall/F1/exact match are not model-detection metrics."
+            ),
+        }
+        metrics["metric_applicability"]["overcorrection"] = {
+            "status": "not_applicable",
+            "reason": (
+                "Clean items with no gold labels are intentionally preserved in "
+                "oracle_revision mode."
+            ),
+        }
+        if metrics.get("revision_quality", {}).get("applicability") == "not_applicable":
+            metrics["metric_applicability"]["revision_semantic"] = {
+                "status": "not_applicable",
+                "reason": metrics["revision_quality"].get(
+                    "reason",
+                    "No gold-labeled items were available for oracle revision.",
+                ),
+            }
+        metrics["metric_roles"]["primary_detection"] = []
+        metrics["metric_roles"]["primary_revision"] = metrics["metric_roles"].get(
+            "supporting_revision",
+            [],
+        )
+        metrics["metric_roles"]["supporting_revision"] = []
+        return
+
+    if evaluation_mode == "detection_only":
+        metrics["revision_quality"] = {
+            "metric_role": "not_applicable",
+            "applicability": "not_applicable",
+            "reason": (
+                "detection_only mode intentionally leaves every item unchanged and "
+                "does not run a reviser."
+            ),
+        }
+        _clear_metric_values(metrics, OVERCORRECTION_METRIC_KEYS)
+        metrics["metric_applicability"]["revision_semantic"] = {
+            "status": "not_applicable",
+            "reason": "The reviser is not run in detection_only mode.",
+        }
+        metrics["metric_applicability"]["overcorrection"] = {
+            "status": "not_applicable",
+            "reason": (
+                "All revisions are forced unchanged by detection_only mode, so "
+                "overcorrection is structurally zero."
+            ),
+        }
+        metrics["metric_roles"]["supporting_revision"] = []
 
 
 def _failure_result(
@@ -257,6 +519,9 @@ def _compute_metrics(
     dataset_metadata: Any,
     use_severity_weighted_scoring: bool,
     include_gold: bool,
+    evaluation_mode: str,
+    semantic_revision_metrics: SemanticRevisionMetrics | None = None,
+    score_semantic_revision_metrics: bool = False,
 ) -> dict[str, Any]:
     category_weights = (
         CATEGORY_SEVERITY_WEIGHTS_BY_CATEGORY
@@ -269,7 +534,29 @@ def _compute_metrics(
         use_severity_weighting=use_severity_weighted_scoring,
         category_weights=category_weights,
     )
+    if evaluation_mode != "detection_only" and semantic_revision_metrics is not None:
+        if score_semantic_revision_metrics:
+            metrics["revision_quality"] = semantic_revision_metrics.score(items, results)
+        else:
+            metrics["revision_quality"] = {
+                "metric_role": "pending_final_semantic_scoring",
+                "applicability": "pending",
+                "reason": (
+                    "Semantic revision metrics are intentionally scored once after "
+                    "the final item to avoid rescoring prior rows during progress logging."
+                ),
+                "metric_config": semantic_revision_metrics.config.to_dict(),
+            }
+    elif evaluation_mode != "detection_only":
+        metrics["revision_quality"] = {
+            "metric_role": "not_configured",
+            "applicability": "not_applicable",
+            "reason": "No semantic revision metric configuration was supplied.",
+        }
     metrics["dataset"] = dataset_metadata.to_dict()
+    metrics["evaluation_mode"] = evaluation_mode
+    metrics["evaluator"] = {"mode": evaluation_mode}
+    _apply_mode_metric_applicability(metrics, evaluation_mode)
     metrics["orchestration"] = _summarize_orchestration(results)
     failures = _summarize_failures(results, include_gold=include_gold)
     metrics["failed_items"] = failures["count"]
@@ -302,9 +589,12 @@ def run_evaluation(
     include_error_traceback: bool = True,
     include_gold: bool = False,
     sampling_seed: int = DEFAULT_SAMPLING_SEED,
+    evaluation_mode: str = "end_to_end",
+    revision_metric_config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if model is None:
         raise ValueError("run_evaluation requires an LLM model.")
+    evaluation_mode = _validate_evaluation_mode(evaluation_mode)
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -314,6 +604,13 @@ def run_evaluation(
         max_items=max_items,
         sampling_seed=sampling_seed,
     )
+    semantic_revision_metrics = None
+    if evaluation_mode != "detection_only" and revision_metric_config is not None:
+        semantic_revision_metrics = SemanticRevisionMetrics(
+            metric_config_from_mapping(revision_metric_config)
+        )
+        # Fail before expensive generation if offline/local metric resources are absent.
+        semantic_revision_metrics.preflight()
     pipeline = ItemReviserPipeline(
         model=model,
         prompt_config=prompt_config,
@@ -335,7 +632,7 @@ def run_evaluation(
     for index, item in enumerate(tqdm(items, desc="Evaluating", unit="item"), start=1):
         opaque_id = _opaque_eval_id(index)
         try:
-            result = pipeline.run(item)
+            result = _run_item_for_mode(pipeline, item, evaluation_mode)
         except Exception as exc:
             if not continue_on_item_error:
                 raise
@@ -378,6 +675,8 @@ def run_evaluation(
                 dataset_metadata=dataset_metadata,
                 use_severity_weighted_scoring=use_severity_weighted_scoring,
                 include_gold=include_gold,
+                evaluation_mode=evaluation_mode,
+                semantic_revision_metrics=semantic_revision_metrics,
             )
             progress_metrics["progress"] = {
                 "completed_items": index,
@@ -393,6 +692,9 @@ def run_evaluation(
         dataset_metadata=dataset_metadata,
         use_severity_weighted_scoring=use_severity_weighted_scoring,
         include_gold=include_gold,
+        evaluation_mode=evaluation_mode,
+        semantic_revision_metrics=semantic_revision_metrics,
+        score_semantic_revision_metrics=True,
     )
     manual_review_count = sum(
         1 for result in results if _needs_manual_review_export(result)

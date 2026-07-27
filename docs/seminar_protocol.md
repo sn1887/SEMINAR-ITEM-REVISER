@@ -115,7 +115,7 @@ Evaluation now targets the LLM agents directly, so GPU/model decisions are part 
 
 ## Evaluation criteria or metrics
 
-Automatic model metrics:
+Primary automatic detection metrics:
 
 - category-level precision,
 - category-level recall,
@@ -123,6 +123,11 @@ Automatic model metrics:
 - exact match of error set,
 - false positive rate on clean items,
 - overcorrection rate.
+
+Secondary/proxy revision metrics may be reported separately, but they are
+interpreted only as similarity diagnostics against expected revisions. Manual
+review remains necessary for revision quality, concept preservation, and
+new-issue checks.
 
 Manual evaluation criteria:
 

@@ -19,6 +19,16 @@ python scripts/evaluate.py \
   orchestration.enabled=true
 ```
 
+For the codebook-hardened orchestration prompt variant:
+
+```bash
+python scripts/evaluate.py \
+  data=final_gold_200_v3_pure_loaded \
+  prompt=orchestration_codebook \
+  orchestration.enabled=true \
+  evaluator.mode=end_to_end
+```
+
 ## Config Surface
 
 The default config lives in `configs/orchestration/default.yaml`.
@@ -95,6 +105,12 @@ The non-orchestrated baseline prompts are kept separately in
 - `quality_checker`
 - `item_reviser`
 
+The zero-shot codebook baseline prompts live in
+`prompts/agents/baseline_codebook/` and are selected with
+`prompt=baseline_codebook`. The orchestration codebook router/fallback prompts
+live in `prompts/agents/orchestration_codebook/` and are selected with
+`prompt=orchestration_codebook`.
+
 Common placeholders include:
 
 - `${allowed_categories}`
@@ -119,6 +135,12 @@ unsupported families, contradictory router output, and explicit fallback
 recommendations, but those route choices can now be changed from config without
 touching Python. A single supported label routes through the planner to the
 configured specialist family.
+
+Severity and confidence are separate concepts. Severity describes the
+measurement harm of a detected issue: `low` is minor risk and the item is mostly
+answerable; `medium` likely affects interpretation or response quality; `high`
+likely invalidates measurement or makes responses misleading. Router confidence
+describes certainty in the route or label decision.
 
 The validator can return:
 

@@ -1,4 +1,9 @@
 name: default
+mode: end_to_end
+
+# Primary end-to-end metrics. Applicability is mode-specific: oracle_revision
+# marks detection scores as oracle-supplied, and detection_only suppresses
+# revision/overcorrection scores because no reviser runs.
 prediction_categories_from: detected_errors
 metrics:
   - precision
@@ -9,6 +14,32 @@ metrics:
   - overcorrection_rate
   - failed_items
   - failure_rate
+
+# Supporting library-backed question-revision metrics. They apply only to
+# gold-flawed rows with valid expected questions; clean controls remain in the
+# false-positive and overcorrection diagnostics. Response-option quality has no
+# semantic metric; exact option match is retained as a strict diagnostic.
+supporting_revision_metrics:
+  - revision_quality.question_bertscore_f1
+  - revision_quality.sari
+  - revision_quality.exact_question_match_rate
+  - revision_quality.exact_option_match_rate
+  - revision_quality.exact_revision_rate
+  - revision_quality.revision_changed_rate
+
+# CPU defaults leave the generation GPU available. `preflight()` caches one
+# BERTScorer per run and fails before generation when local/offline weights or
+# Evaluate's SARI module are unavailable.
+metric_config:
+  bertscore_model_type: distilroberta-base
+  bertscore_num_layers: 5
+  device: cpu
+  batch_size: 16
+  rescale_with_baseline: false
+  language: en
+  cache_path: .metric-cache
+  offline: false
+
 write_confusion_by_category: true
 
 # Keep long benchmark runs alive when a single item produces invalid JSON,
