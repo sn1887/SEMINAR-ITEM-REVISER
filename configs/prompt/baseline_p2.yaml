@@ -1,4 +1,4 @@
-# Opt-in P2 few-shot extension of baseline P1 response-option rules.
+# Opt-in P2 targeted calibration of baseline P1 response-option rules.
 name: baseline_p2
 
 quality_checker:

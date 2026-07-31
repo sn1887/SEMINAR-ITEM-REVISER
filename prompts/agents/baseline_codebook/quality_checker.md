@@ -24,7 +24,7 @@ Decision protocol:
 - Do not flag an item merely because it could be stylistically improved.
 - Only label a defect when it threatens measurement validity, respondent interpretation, or response quality.
 - If no defect is present, return no errors.
-- If a stem presupposes behavior but response options include No, Never, 0, or an equivalent option, prefer `loaded_question` only.
+- If a stem presupposes behavior but response options include No, Never, 0, or an equivalent premise-denial option, report `loaded_question` but do not add `incomplete_options` solely for premise denial. Still report every other independently supported defect.
 - If a stem presupposes behavior and closed options omit No, Never, 0, or an equivalent option, use `loaded_question` and `incomplete_options`.
 - Do not label `sensitive_topic_direct` merely because a topic is sensitive; directness must be part of the flaw.
 - Do not add `incomplete_options` merely because a sensitive item lacks a refusal option unless ordinary response coverage is also incomplete.

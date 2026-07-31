@@ -57,6 +57,34 @@ Each record has:
 
 - `open_closed_mismatch`
 
+## Prompt treatments
+
+- P0 is the zero-shot codebook control: `baseline_codebook` or
+  `orchestration_codebook` according to the runtime pipeline. It remains
+  example-free. Three narrow consistency repairs affect P0: the loaded versus
+  completeness rule no longer suppresses unrelated independent labels; the
+  orchestration router drops an unreachable severity instruction because its
+  schema has no severity field; and the shared validator makes
+  `fixes_detected_issue` nullable/not applicable when the clean accept path has
+  no detected issue. The taxonomy and revision rules otherwise remain
+  unchanged.
+- P1 preserves P0 and adds operational response-option rules. The orchestrated
+  treatment also gives `open_closed_mismatch` to a P1 questionnaire-format
+  specialist.
+- P2 preserves P1 and adds fixed, independently authored calibration examples.
+  It is a targeted response-option and format calibration treatment, not
+  unrestricted few-shot coverage of the taxonomy.
+
+P2 directly demonstrates `agree_disagree_scale`, `incomplete_options`,
+`non_exclusive_options`, `missing_scale_labels`, and
+`open_closed_mismatch`, together with clean-item preservation and validator
+decisions. It has no direct example for `unbalanced_scale`,
+`too_many_scale_points`, or `polarity_mismatch`; the planner, wording,
+construct, and bias roles receive zero examples and reuse P0. Improvements
+outside demonstrated categories may therefore arise from P1 rules or model
+generalization rather than direct in-context examples. Exact per-role counts
+and boundaries are listed in `prompts/agents/README.md`.
+
 ## Evaluation modes
 
 - `end_to_end`: detect issues and revise from predicted labels. This preserves
@@ -118,18 +146,26 @@ clearly labelled diagnostics, not semantic quality scores. All are
 single-reference automatic measures, so valid alternative repairs can be
 penalized.
 
-### Severity Interpretation
+### Severity interpretation
 
-Severity is an item-specific impact judgment for each detected issue.
+For the baseline quality checker, severity is a model-predicted, item-specific
+impact judgment for each detected issue.
 
 - `low`: minor risk; item is mostly answerable.
 - `medium`: likely affects interpretation or response quality.
 - `high`: likely invalidates measurement or makes responses misleading.
 
-Do not treat severity as model confidence or benchmark difficulty. For
-multi-label items, assign severity per issue; when an item-level summary is
-needed, use the highest issue severity. A high-severity issue should be
-considered unresolved unless the revision directly restores valid measurement.
+Do not treat baseline severity as model confidence or benchmark difficulty. For
+multi-label baseline output, assign severity per issue; when an item-level
+summary is needed, use the highest issue severity. A high-severity issue should
+be considered unresolved unless the revision directly restores valid
+measurement.
+
+The orchestration router does not output severity. The runtime assigns
+`severity="medium"` when adapting routed labels to the shared `CheckResult`
+shape; this is synthetic compatibility metadata, not a model prediction. It
+must not be reported or compared as model-predicted severity. Oracle-revision
+labels likewise receive compatibility values rather than predicted severity.
 
 ## Commands
 

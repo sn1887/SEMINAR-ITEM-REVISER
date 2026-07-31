@@ -10,18 +10,17 @@ from item_reviser.models.base import BaseLLM
 from item_reviser.orchestration.config import OrchestrationConfig
 from item_reviser.prompting import AgentPromptConfig, agent_prompt_config
 from item_reviser.schemas import (
+    REPAIR_FAMILIES,
     CheckResult,
     OrchestrationTrace,
     PipelineResult,
-    REPAIR_FAMILIES,
-    ReviserAgentOutput,
     RevisedItem,
+    ReviserAgentOutput,
     RevisionPlan,
     RouterDecision,
     SurveyItem,
     ValidatorResult,
 )
-
 
 ROUTER_OUTPUT_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -95,10 +94,24 @@ VALIDATOR_OUTPUT_SCHEMA: dict[str, Any] = {
         "rationale": {"type": "string"},
         "retry_instructions": {"type": "array", "items": {"type": "string"}},
         "preserves_construct": {"type": "boolean"},
-        "fixes_detected_issue": {"type": "boolean"},
+        "fixes_detected_issue": {"type": ["boolean", "null"]},
         "introduces_new_issue": {"type": "boolean"},
     },
 }
+
+
+def _validator_output_schema(*, has_detected_issues: bool) -> dict[str, Any]:
+    """Return the context-specific schema for issue-fix applicability."""
+
+    return {
+        **VALIDATOR_OUTPUT_SCHEMA,
+        "properties": {
+            **VALIDATOR_OUTPUT_SCHEMA["properties"],
+            "fixes_detected_issue": {
+                "type": "boolean" if has_detected_issues else "null"
+            },
+        },
+    }
 
 
 SPECIALIST_SCOPES = {
@@ -163,6 +176,17 @@ def _candidate_revision_payload(candidate: RevisedItem | ReviserAgentOutput) -> 
         "revision_notes": list(candidate.revision_notes),
         "changed": bool(candidate.changed),
     }
+
+
+def _detected_issue_payload(error: CheckResult) -> dict[str, Any]:
+    payload = error.to_dict()
+    if error.checker in {"llm_router", "gold_oracle"}:
+        payload.pop("severity", None)
+    return payload
+
+
+def _detected_issue_payloads(detected_errors: list[CheckResult]) -> list[dict[str, Any]]:
+    return [_detected_issue_payload(error) for error in detected_errors]
 
 
 def _validation_criteria(detected_errors: list[CheckResult]) -> list[str]:
@@ -252,7 +276,7 @@ class RevisionPlannerAgent(BaseAgent):
                 **item.model_input(),
                 "router_decision": router_decision.to_dict(),
                 "detected_categories": [error.category for error in detected_errors],
-                "detected_issues": [error.to_dict() for error in detected_errors],
+                "detected_issues": _detected_issue_payloads(detected_errors),
                 "retry_instructions": retry_instructions or [],
                 "trace_context": _trace_context(trace) if trace is not None else {},
             }
@@ -294,7 +318,7 @@ class FallbackReviserAgent(BaseAgent):
                 "allowed_categories": _format_allowed_categories(),
                 **item.model_input(),
                 "detected_categories": [error.category for error in detected_errors],
-                "detected_issues": [error.to_dict() for error in detected_errors],
+                "detected_issues": _detected_issue_payloads(detected_errors),
                 "router_decision": router_decision.to_dict(),
                 "router_confidence": router_decision.confidence,
                 "recommended_route": router_decision.recommended_route,
@@ -351,7 +375,7 @@ class SpecialistReviserAgent(BaseAgent):
                 "repair_family": self.family,
                 **item.model_input(),
                 "detected_categories": [error.category for error in detected_errors],
-                "detected_issues": [error.to_dict() for error in detected_errors],
+                "detected_issues": _detected_issue_payloads(detected_errors),
                 "router_decision": router_decision.to_dict(),
                 "revision_plan": revision_plan.to_dict(),
                 "retry_instructions": retry_instructions or [],
@@ -388,14 +412,17 @@ class ValidatorAgent(BaseAgent):
         remaining_retry_budget: int = 0,
         trace: OrchestrationTrace | None = None,
     ) -> ValidatorResult:
+        output_schema = _validator_output_schema(
+            has_detected_issues=bool(detected_errors)
+        )
         prompt = self.prompt_config.render(
             {
-                "output_schema": VALIDATOR_OUTPUT_SCHEMA,
+                "output_schema": output_schema,
                 "allowed_categories": _format_allowed_categories(),
                 "validation_criteria": _validation_criteria(detected_errors),
                 **item.model_input(),
                 "detected_categories": [error.category for error in detected_errors],
-                "detected_issues": [error.to_dict() for error in detected_errors],
+                "detected_issues": _detected_issue_payloads(detected_errors),
                 "router_decision": router_decision.to_dict(),
                 "revision_plan": revision_plan.to_dict() if revision_plan is not None else {},
                 "candidate_revision": _candidate_revision_payload(candidate),
@@ -405,11 +432,14 @@ class ValidatorAgent(BaseAgent):
         )
         payload = self.model.complete_json(
             prompt,
-            VALIDATOR_OUTPUT_SCHEMA,
+            output_schema,
             max_retries=self.prompt_config.max_retries,
             timeout_seconds=self.prompt_config.timeout_seconds,
         )
-        return ValidatorResult.from_dict(payload)
+        return ValidatorResult.from_dict(
+            payload,
+            has_detected_issues=bool(detected_errors),
+        )
 
 
 class OrchestratedItemReviser:

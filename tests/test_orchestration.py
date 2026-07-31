@@ -7,12 +7,15 @@ from item_reviser.agents.pipeline import ItemReviserPipeline
 from item_reviser.evaluation.runner import _summarize_orchestration
 from item_reviser.models.base import BaseLLM, LLMOutputSchemaError
 from item_reviser.orchestration.config import OrchestrationConfig
-from item_reviser.schemas import SurveyItem
+from item_reviser.schemas import CheckResult, SurveyItem
 
 
 def _prompt(name: str) -> dict[str, object]:
     return {
-        "template": f"{name}: ${{question}}\nSchema: ${{output_schema}}",
+        "template": (
+            f"{name}: ${{question}}\nCriteria: ${{validation_criteria}}\n"
+            "Schema: ${output_schema}"
+        ),
         "max_retries": 1,
         "timeout_seconds": 10,
     }
@@ -139,7 +142,12 @@ def test_orchestration_config_loads_from_dictconfig_and_validates_bounds():
 
 
 def test_orchestrated_accept_path_leaves_item_unchanged_and_traced():
-    model = QueueLLM([_router("accept", [], recommended_route="accept"), _validator("pass")])
+    model = QueueLLM(
+        [
+            _router("accept", [], recommended_route="accept"),
+            _validator("pass") | {"fixes_detected_issue": None},
+        ]
+    )
     item = SurveyItem(id="clean", question="How satisfied are you?")
 
     result = ItemReviserPipeline(
@@ -347,6 +355,49 @@ def test_validator_manual_review_status_is_traced():
     assert result.orchestration_trace.final_status == "manual_review"
 
 
+def test_detected_issue_contradictory_validator_pass_is_not_accepted():
+    model = QueueLLM(
+        [
+            _router("revise", ["leading_question"], recommended_route="fallback"),
+            _revision("To what extent do you support or oppose stricter rules?"),
+            _validator("pass") | {"fixes_detected_issue": False},
+        ]
+    )
+
+    result = ItemReviserPipeline(
+        model=model,
+        prompt_config=ORCHESTRATION_PROMPTS,
+        orchestration_config={"enabled": True, "retry_budget": 0},
+    ).run(SurveyItem(question="Don't you agree stricter rules are needed?"))
+
+    assert result.orchestration_trace is not None
+    assert result.orchestration_trace.validation_status == "manual_review"
+    assert result.orchestration_trace.final_status == "manual_review"
+    assert result.revised_item.changed is True
+
+
+def test_clean_path_contradictory_validator_pass_is_not_accepted():
+    model = QueueLLM(
+        [
+            _router("accept", [], recommended_route="accept"),
+            _validator("pass")
+            | {"preserves_construct": False, "fixes_detected_issue": None},
+        ]
+    )
+
+    result = ItemReviserPipeline(
+        model=model,
+        prompt_config=ORCHESTRATION_PROMPTS,
+        orchestration_config={"enabled": True},
+    ).run(SurveyItem(question="How satisfied are you?"))
+
+    assert result.detected_errors == []
+    assert result.orchestration_trace is not None
+    assert result.orchestration_trace.validation_status == "manual_review"
+    assert result.orchestration_trace.final_status == "manual_review"
+    assert result.revised_item.changed is False
+
+
 def test_out_of_range_router_confidence_is_rejected():
     model = QueueLLM([_router("accept", [], confidence=1.5, recommended_route="accept")])
 
@@ -385,6 +436,52 @@ def test_sequential_planner_family_mismatch_uses_fallback():
     assert result.orchestration_trace is not None
     assert result.orchestration_trace.route == "fallback"
     assert result.orchestration_trace.selected_agent == "fallback_reviser"
+
+
+def test_oracle_revision_supplied_multi_labels_can_use_sequential_specialists():
+    model = QueueLLM(
+        [
+            _plan("wording_clarity"),
+            _revision("To what extent do you support stricter rules?"),
+            _plan("response_options_scale"),
+            _revision("To what extent do you support or oppose stricter rules?"),
+            _validator("pass"),
+        ]
+    )
+    pipeline = ItemReviserPipeline(
+        model=model,
+        prompt_config=ORCHESTRATION_PROMPTS,
+        orchestration_config={
+            "enabled": True,
+            "strategy": "sequential_specialists",
+            "multi_label_strategy": "sequential",
+        },
+    )
+
+    assert pipeline.orchestrator is not None
+    result = pipeline.orchestrator.revise_with_errors(
+        SurveyItem(question="Don't you agree stricter rules are needed?"),
+        [
+            CheckResult(
+                category="leading_question",
+                severity="high",
+                explanation="Leading wording.",
+                checker="gold_oracle",
+            ),
+            CheckResult(
+                category="agree_disagree_scale",
+                severity="medium",
+                explanation="Agreement framing needs item-specific options.",
+                checker="gold_oracle",
+            ),
+        ],
+        evaluation_mode="oracle_revision",
+    )
+
+    assert result.orchestration_trace is not None
+    assert result.orchestration_trace.route == "specialist"
+    assert result.orchestration_trace.selected_agent == "sequential_specialists"
+    assert result.orchestration_trace.fallback_reason is None
 
 
 def test_invalid_router_decision_is_rejected_by_json_schema():

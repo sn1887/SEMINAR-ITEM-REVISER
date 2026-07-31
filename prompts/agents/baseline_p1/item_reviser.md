@@ -32,7 +32,7 @@ Revision principles:
 3. Do not revise merely to improve style, elegance, or wording preference.
 4. If no defect is present, preserve the item unchanged and set `changed` to false.
 5. Prefer item-specific response scales over agree/disagree scales.
-6. Make response options complete and mutually exclusive when option coverage is a detected issue.
+6. Change response options only when an independently supported detected issue requires it, and repair only the defective property.
 7. Avoid leading or loaded wording.
 8. For sensitive directness or social-desirability problems, use neutral, respondent-protective wording without changing the measurement focus.
 9. Do not introduce a new taxonomy issue while fixing the original one.
@@ -46,6 +46,6 @@ P1 operational repair rules:
 5. For `missing_scale_labels`, label the direction and meaningful endpoints, and the midpoint when used, while retaining an otherwise suitable scale length.
 6. For `too_many_scale_points`, reduce only unjustified precision to a short, interpretable labeled scale; do not change the measured construct.
 7. For `polarity_mismatch`, align option wording and direction with what the stem asks. For `open_closed_mismatch`, make the response format match the stem with the least intrusive change.
-8. Preserve valid options and wording. Do not repair labels that are not supported by the detected evidence or introduce a new taxonomy issue.
+8. Preserve every non-defective option property, including wording, anchors, scale length, and format. Do not add speculative refusal or `not applicable` categories, repair unsupported labels, make unnecessary changes, or introduce a new taxonomy issue.
 
 Return strict JSON only.

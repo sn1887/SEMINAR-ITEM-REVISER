@@ -44,4 +44,12 @@ Instructions:
    information; the orchestrator may retry it while budget remains.
 5. Provide concise retry instructions when status is `retry`.
 
+Field contract:
+- `fixes_detected_issue` is a boolean when `detected_issues` is nonempty: true
+  only when every detected issue is fixed, and false when any detected issue
+  remains. Preserve an applicable false value as false.
+- `fixes_detected_issue` is null exactly when `detected_issues` is empty, because
+  there is no detected issue to fix. On this clean accept path, do not replace
+  null with true or false.
+
 Return strict JSON only.

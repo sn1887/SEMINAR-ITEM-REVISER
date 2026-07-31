@@ -9,9 +9,9 @@ never supplied to prompts as gold metadata.
 | Block | Condition | Runs |
 | --- | --- | ---: |
 | A | P0 codebook controls: 3 models × 2 pipelines × 2 modes | 12 |
-| B | Qwen P1 operational option rules: 2 pipelines × 2 modes | 4 |
-| C | Qwen P2 few-shot prompts: 2 pipelines × 2 modes | 4 |
-| D | Qwen P2 few-shot with thinking: 2 pipelines × 2 modes | 4 |
+| B | Qwen P1 operational option/format rules: 2 pipelines × 2 modes | 4 |
+| C | Qwen P2 targeted option/format calibration: 2 pipelines × 2 modes | 4 |
+| D | Qwen P2 targeted calibration with thinking: 2 pipelines × 2 modes | 4 |
 | E | Gemma P2 transfer: 2 pipelines × end-to-end | 2 |
 
 The modes are only `end_to_end` and `oracle_revision`; `detection_only` is
@@ -20,6 +20,42 @@ deliberately excluded. Decoding is identical for every row (greedy,
 enabled only in block D. P0 selects `baseline_codebook` or
 `orchestration_codebook`; P1 selects `baseline_p1` or `orchestration_p1`; P2
 selects `baseline_p2` or `orchestration_p2`.
+
+P0 remains zero-shot and example-free. Three narrow consistency repairs affect
+the control: its loaded/completeness boundary no longer suppresses unrelated
+independent labels; its orchestration router drops an unreachable severity
+instruction because the router schema has no severity field; and its shared
+validator makes `fixes_detected_issue` nullable/not applicable when no issue was
+detected on the clean accept path. Taxonomy and revision rules otherwise remain
+unchanged.
+
+The known treatment configs are pipeline-specific. Baseline packs fail fast
+when orchestration is enabled, and orchestration packs fail fast on the baseline
+path. This protects the manifest treatment assignment from a silent
+prompt/pipeline mismatch.
+
+## P2 interpretation boundary
+
+P2 is not a general few-shot treatment over all 16 taxonomy labels. It adds
+fixed, independently authored demonstrations concentrated on response-option
+and open/closed-format decisions:
+
+| Role | Demonstrations |
+| --- | ---: |
+| Baseline checker / reviser | 3 / 3 |
+| Orchestration router / fallback | 4 / 3 |
+| Response-options / questionnaire-format specialist | 3 / 2 |
+| Validator | 3 |
+| Planner / wording / construct / bias | 0 each; P0 reused |
+
+The examples directly exercise `agree_disagree_scale`, `incomplete_options`,
+`non_exclusive_options`, `missing_scale_labels`, and
+`open_closed_mismatch`, plus clean-item preservation and validation decisions.
+The option categories `unbalanced_scale`, `too_many_scale_points`, and
+`polarity_mismatch` have no direct P2 example. Improvements outside the
+demonstrated categories may reflect P1 operational rules or model
+generalization, not a direct in-context-example effect. The per-role boundaries
+are recorded in `prompts/agents/README.md`.
 
 ## Validate without scheduling
 

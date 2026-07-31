@@ -225,4 +225,10 @@ def write_markdown_report(path: str | Path, metrics: dict[str, Any]) -> None:
             "Revision-similarity metrics are automatic proxies and do not replace manual evaluation.",
         ]
     )
+    severity_metadata = metrics.get("severity", {})
+    if severity_metadata.get("orchestration_router_output") == "not_predicted":
+        lines.append(
+            "For orchestration runs, the router does not predict severity; any routed "
+            "issue severity value is synthetic compatibility metadata."
+        )
     path.write_text("\n".join(lines), encoding="utf-8")

@@ -1,4 +1,4 @@
-# Opt-in P1 operational response-option rules for the orchestrated pipeline.
+# Opt-in P1 operational response-option and format rules for orchestration.
 name: orchestration_p1
 
 # These baseline slots are retained for a complete prompt schema but are not used
@@ -41,7 +41,7 @@ bias_sensitivity:
   max_retries: 3
   timeout_seconds: 120
 questionnaire_format:
-  template_path: ${paths.prompt_dir}/agents/orchestration/specialist_questionnaire_format.md
+  template_path: ${paths.prompt_dir}/agents/orchestration_p1/specialist_questionnaire_format.md
   max_retries: 3
   timeout_seconds: 120
 validator:

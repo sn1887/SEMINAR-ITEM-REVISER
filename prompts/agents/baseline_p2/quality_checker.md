@@ -24,7 +24,7 @@ Decision protocol:
 - Do not flag an item merely because it could be stylistically improved.
 - Only label a defect when it threatens measurement validity, respondent interpretation, or response quality.
 - If no defect is present, return no errors.
-- If a stem presupposes behavior but response options include No, Never, 0, or an equivalent option, prefer `loaded_question` only.
+- If a stem presupposes behavior but response options include No, Never, 0, or an equivalent premise-denial option, report `loaded_question` but do not add `incomplete_options` solely for premise denial. Still report every other independently supported defect.
 - If a stem presupposes behavior and closed options omit No, Never, 0, or an equivalent option, use `loaded_question` and `incomplete_options`.
 - Do not label `sensitive_topic_direct` merely because a topic is sensitive; directness must be part of the flaw.
 - Do not add `incomplete_options` merely because a sensitive item lacks a refusal option unless ordinary response coverage is also incomplete.
@@ -67,19 +67,81 @@ P1 operational response-option decision rules:
 
 Fixed calibration examples, authored from general survey-design principles:
 
-Example 1 - overlap is not completeness:
-- Item: "In a typical week, how many evening workshops do you attend?"
-- Options: ["0-2", "2-4", "4 or more"]
-- Classification: `non_exclusive_options`; the shared endpoints permit two answers.
+<!-- P2_EXAMPLE_START -->
+Example 1 - overlap is not incompleteness.
 
-Example 2 - use the response task's construct:
-- Item: "How easy or difficult was it to locate the visitor entrance?"
-- Options: ["Strongly disagree", "Disagree", "Neither agree nor disagree", "Agree", "Strongly agree"]
-- Classification: `agree_disagree_scale`; ease/difficulty has a direct scale.
+Input JSON:
+```json
+{
+  "question": "During the past four Saturdays, on how many, if any, did you visit a farmers' market?",
+  "response_options": ["None", "One", "Two or three", "Three or four"]
+}
+```
 
-Example 3 - preserve a sound closed item:
-- Item: "Which device do you use most often for video calls?"
-- Options: ["Desktop or laptop computer", "Tablet", "Mobile phone", "Another device"]
-- Classification: no errors; do not add labels merely because another wording is possible.
+<!-- P2_OUTPUT_EXAMPLE_START -->
+Output JSON:
+```json
+{
+  "errors": [
+    {
+      "category": "non_exclusive_options",
+      "severity": "medium",
+      "explanation": "The options overlap at three visits, so one respondent can have two valid answers.",
+      "evidence": "Both 'Two or three' and 'Three or four' include three."
+    }
+  ]
+}
+```
+<!-- P2_OUTPUT_EXAMPLE_END -->
+<!-- P2_EXAMPLE_END -->
+
+<!-- P2_EXAMPLE_START -->
+Example 2 - use the response task's construct.
+
+Input JSON:
+```json
+{
+  "question": "How confident are you that you could assemble a flat-pack stool using written instructions?",
+  "response_options": ["Completely disagree", "Mostly disagree", "Neither agree nor disagree", "Mostly agree", "Completely agree"]
+}
+```
+
+<!-- P2_OUTPUT_EXAMPLE_START -->
+Output JSON:
+```json
+{
+  "errors": [
+    {
+      "category": "agree_disagree_scale",
+      "severity": "medium",
+      "explanation": "Agreement choices do not directly answer a confidence question.",
+      "evidence": "The stem asks about confidence, but every option expresses agreement."
+    }
+  ]
+}
+```
+<!-- P2_OUTPUT_EXAMPLE_END -->
+<!-- P2_EXAMPLE_END -->
+
+<!-- P2_EXAMPLE_START -->
+Example 3 - preserve a complete, exclusive clean item.
+
+Input JSON:
+```json
+{
+  "question": "During the past 30 days, did you borrow at least one printed book from a library?",
+  "response_options": ["Yes, I borrowed at least one printed book", "No, I did not borrow a printed book"]
+}
+```
+
+<!-- P2_OUTPUT_EXAMPLE_START -->
+Output JSON:
+```json
+{
+  "errors": []
+}
+```
+<!-- P2_OUTPUT_EXAMPLE_END -->
+<!-- P2_EXAMPLE_END -->
 
 Return strict JSON only.

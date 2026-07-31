@@ -285,11 +285,13 @@ def _apply_mode_metric_applicability(
         },
     }
     metrics["severity"] = {
-        "checker_output": "schema_enforced_low_medium_high",
-        "router_output": (
-            "router-derived detected errors use default severity='medium' until "
-            "the router schema emits issue-level severity"
-        ),
+        "baseline_checker_output": "model_predicted_low_medium_high",
+        "orchestration_router_output": "not_predicted",
+        "routed_issue_compatibility_metadata": {
+            "value": "medium",
+            "synthetic": True,
+            "comparable_to_model_predicted_severity": False,
+        },
     }
     revision_quality = metrics.get("revision_quality", {})
     if revision_quality.get("applicability") == "not_applicable":

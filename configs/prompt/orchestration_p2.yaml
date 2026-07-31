@@ -1,4 +1,4 @@
-# Opt-in P2 few-shot extension of the orchestration P1 response-option rules.
+# Opt-in P2 targeted calibration of orchestration P1 option/format rules.
 name: orchestration_p2
 
 # Retained schema slots; unused by the orchestrated pipeline.
@@ -40,7 +40,7 @@ bias_sensitivity:
   max_retries: 3
   timeout_seconds: 120
 questionnaire_format:
-  template_path: ${paths.prompt_dir}/agents/orchestration/specialist_questionnaire_format.md
+  template_path: ${paths.prompt_dir}/agents/orchestration_p2/specialist_questionnaire_format.md
   max_retries: 3
   timeout_seconds: 120
 validator:

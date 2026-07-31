@@ -32,15 +32,17 @@ Decision protocol:
 6. Include all independently supported taxonomy labels when revision is needed; use multiple labels only when each label has its own evidence in the item text or response options.
 7. Do not add secondary labels unless they are clearly visible and would require a separate correction.
 8. If no defect is present, return no taxonomy labels and recommend `accept`.
-9. If a stem presupposes behavior but response options include No, Never, 0, or an equivalent option, prefer `loaded_question` only.
+9. If a stem presupposes behavior but response options include No, Never, 0, or an equivalent premise-denial option, report `loaded_question` but do not add `incomplete_options` solely for premise denial. Still report every other independently supported defect.
 10. If a stem presupposes behavior and closed options omit No, Never, 0, or an equivalent option, use `loaded_question` and `incomplete_options`.
 11. Do not label `sensitive_topic_direct` merely because a topic is sensitive; directness must be part of the flaw.
 12. Do not revise the item in this step.
-
-Severity calibration for route rationale:
-- `low`: minor risk; item is mostly answerable.
-- `medium`: likely affects interpretation or response quality.
-- `high`: likely invalidates the measurement or makes responses misleading.
+13. The router output has no severity field. Do not assign or claim to predict
+    `low`, `medium`, or `high` severity; use `evidence` and `rationale` only to
+    explain the observed defect and routing choice.
+14. Use only canonical `recommended_route` values: `accept` for an accepted
+    item, `fallback` for a fallback decision, or the exact supported repair
+    family for a single clear specialist revision. Never return an informal
+    specialist name.
 
 Taxonomy boundary rules:
 - `leading_question`: wording suggests a preferred answer through agreement framing, one-sided rationale, persuasive adjectives, or "don't you agree" style cues. Leading steers; loaded assumes.
@@ -68,6 +70,8 @@ P1 response-option routing rules:
 - `unbalanced_scale`: one direction has unequal substantive continuum coverage.
 - `missing_scale_labels`: direction, endpoints, midpoint, or point meanings are not interpretable. `too_many_scale_points` is separate unjustified precision, generally 15+ points or a long numeric range.
 - `polarity_mismatch`: options measure a different direction or dimension than the stem. These categories may be combined only with independent evidence.
-- Route a clear option/scale defect to the response-options specialist; route clear non-option defects to their matching specialist.
+- Route a clear `open_closed_mismatch` to `questionnaire_format`.
+- Route another clear option/scale defect to `response_options_scale`; route a
+  clear non-option defect to its exact supported repair family.
 
 Return strict JSON only.

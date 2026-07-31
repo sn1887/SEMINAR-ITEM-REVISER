@@ -18,6 +18,7 @@ from rich import print_json  # noqa: E402
 
 from item_reviser.evaluation.runner import run_evaluation  # noqa: E402
 from item_reviser.models.factory import build_model  # noqa: E402
+from item_reviser.prompting import validate_prompt_pipeline_compatibility  # noqa: E402
 from item_reviser.utils import set_seed  # noqa: E402
 
 
@@ -97,6 +98,13 @@ def _tracking_progress_interval(cfg: DictConfig) -> int:
         return max(0, int(value or 0))
     except (TypeError, ValueError):
         return 0
+
+
+def _validate_prompt_pipeline_for_cfg(cfg: DictConfig) -> None:
+    validate_prompt_pipeline_compatibility(
+        cfg.prompt,
+        orchestration_enabled=bool(cfg.get("orchestration", {}).get("enabled", False)),
+    )
 
 
 def _configure_mlflow_tracking(cfg: DictConfig) -> Any | None:
@@ -240,6 +248,7 @@ def _log_mlflow_final_outputs(
 @hydra.main(version_base=None, config_path="../configs", config_name="config")
 def main(cfg: DictConfig) -> None:
     set_seed(int(cfg.seed))
+    _validate_prompt_pipeline_for_cfg(cfg)
     model = build_model(cfg.model)
     max_items = cfg.experiment.get("max_items")
     sampling_seed = int(cfg.evaluator.get("sampling_seed", cfg.seed))

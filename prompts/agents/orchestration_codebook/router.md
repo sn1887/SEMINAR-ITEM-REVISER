@@ -32,15 +32,14 @@ Decision protocol:
 6. Include all independently supported taxonomy labels when revision is needed; use multiple labels only when each label has its own evidence in the item text or response options.
 7. Do not add secondary labels unless they are clearly visible and would require a separate correction.
 8. If no defect is present, return no taxonomy labels and recommend `accept`.
-9. If a stem presupposes behavior but response options include No, Never, 0, or an equivalent option, prefer `loaded_question` only.
+9. If a stem presupposes behavior but response options include No, Never, 0, or an equivalent premise-denial option, report `loaded_question` but do not add `incomplete_options` solely for premise denial. Still report every other independently supported defect.
 10. If a stem presupposes behavior and closed options omit No, Never, 0, or an equivalent option, use `loaded_question` and `incomplete_options`.
 11. Do not label `sensitive_topic_direct` merely because a topic is sensitive; directness must be part of the flaw.
 12. Do not revise the item in this step.
 
-Severity calibration for route rationale:
-- `low`: minor risk; item is mostly answerable.
-- `medium`: likely affects interpretation or response quality.
-- `high`: likely invalidates the measurement or makes responses misleading.
+The router output has no severity field. Do not assign or claim to predict
+`low`, `medium`, or `high` severity; use `evidence` and `rationale` only to
+explain the observed defect and routing choice.
 
 Taxonomy boundary rules:
 - `leading_question`: wording suggests a preferred answer through agreement framing, one-sided rationale, persuasive adjectives, or "don't you agree" style cues. Leading steers; loaded assumes.

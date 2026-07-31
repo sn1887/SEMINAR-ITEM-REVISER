@@ -9,6 +9,13 @@ from typing import Any
 
 from omegaconf import DictConfig, OmegaConf
 
+KNOWN_BASELINE_PROMPT_CONFIGS = frozenset(
+    {"baseline_codebook", "baseline_p1", "baseline_p2"}
+)
+KNOWN_ORCHESTRATION_PROMPT_CONFIGS = frozenset(
+    {"orchestration_codebook", "orchestration_p1", "orchestration_p2"}
+)
+
 
 def _to_plain_mapping(config: object | None) -> dict[str, Any]:
     if config is None:
@@ -36,7 +43,7 @@ class AgentPromptConfig:
     timeout_seconds: float = 120.0
 
     @classmethod
-    def from_config(cls, config: object | None) -> "AgentPromptConfig":
+    def from_config(cls, config: object | None) -> AgentPromptConfig:
         data = _to_plain_mapping(config)
         return cls(
             template_path=(
@@ -67,3 +74,32 @@ def agent_prompt_config(prompt_config: object, agent_name: str) -> AgentPromptCo
     if agent_name not in data:
         raise ValueError(f"Missing prompt config for agent '{agent_name}'.")
     return AgentPromptConfig.from_config(data[agent_name])
+
+
+def validate_prompt_pipeline_compatibility(
+    prompt_config: object,
+    *,
+    orchestration_enabled: bool,
+) -> None:
+    """Reject known treatment packs on the wrong runtime pipeline.
+
+    Custom, unnamed, and ``default`` prompt configs remain unrestricted because
+    they may intentionally provide prompt slots for either pipeline.
+    """
+
+    name_value = _to_plain_mapping(prompt_config).get("name")
+    name = str(name_value).strip() if name_value is not None else ""
+    if orchestration_enabled and name in KNOWN_BASELINE_PROMPT_CONFIGS:
+        matching_name = name.replace("baseline_", "orchestration_", 1)
+        raise ValueError(
+            f"Prompt config '{name}' is baseline-only and cannot run with "
+            "orchestration.enabled=true. "
+            f"Use prompt={matching_name} or disable orchestration."
+        )
+    if not orchestration_enabled and name in KNOWN_ORCHESTRATION_PROMPT_CONFIGS:
+        matching_name = name.replace("orchestration_", "baseline_", 1)
+        raise ValueError(
+            f"Prompt config '{name}' is orchestration-only and cannot run with "
+            "orchestration.enabled=false. "
+            f"Use prompt={matching_name} or enable orchestration."
+        )

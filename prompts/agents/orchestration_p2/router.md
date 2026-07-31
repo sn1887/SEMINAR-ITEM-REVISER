@@ -32,15 +32,17 @@ Decision protocol:
 6. Include all independently supported taxonomy labels when revision is needed; use multiple labels only when each label has its own evidence in the item text or response options.
 7. Do not add secondary labels unless they are clearly visible and would require a separate correction.
 8. If no defect is present, return no taxonomy labels and recommend `accept`.
-9. If a stem presupposes behavior but response options include No, Never, 0, or an equivalent option, prefer `loaded_question` only.
+9. If a stem presupposes behavior but response options include No, Never, 0, or an equivalent premise-denial option, report `loaded_question` but do not add `incomplete_options` solely for premise denial. Still report every other independently supported defect.
 10. If a stem presupposes behavior and closed options omit No, Never, 0, or an equivalent option, use `loaded_question` and `incomplete_options`.
 11. Do not label `sensitive_topic_direct` merely because a topic is sensitive; directness must be part of the flaw.
 12. Do not revise the item in this step.
-
-Severity calibration for route rationale:
-- `low`: minor risk; item is mostly answerable.
-- `medium`: likely affects interpretation or response quality.
-- `high`: likely invalidates the measurement or makes responses misleading.
+13. The router output has no severity field. Do not assign or claim to predict
+    `low`, `medium`, or `high` severity; use `evidence` and `rationale` only to
+    explain the observed defect and routing choice.
+14. Use only canonical `recommended_route` values: `accept` for an accepted
+    item, `fallback` for a fallback decision, or the exact supported repair
+    family for a single clear specialist revision. Never return an informal
+    specialist name.
 
 Taxonomy boundary rules:
 - `leading_question`: wording suggests a preferred answer through agreement framing, one-sided rationale, persuasive adjectives, or "don't you agree" style cues. Leading steers; loaded assumes.
@@ -68,14 +70,98 @@ P1 response-option routing rules:
 - `unbalanced_scale`: one direction has unequal substantive continuum coverage.
 - `missing_scale_labels`: direction, endpoints, midpoint, or point meanings are not interpretable. `too_many_scale_points` is separate unjustified precision, generally 15+ points or a long numeric range.
 - `polarity_mismatch`: options measure a different direction or dimension than the stem. These categories may be combined only with independent evidence.
-- Route a clear option/scale defect to the response-options specialist; route clear non-option defects to their matching specialist.
+- Route a clear `open_closed_mismatch` to `questionnaire_format`.
+- Route another clear option/scale defect to `response_options_scale`; route a
+  clear non-option defect to its exact supported repair family.
 
 Fixed calibration examples, authored from general survey-design principles:
 
-Example 1: "In a typical week, how many evening workshops do you attend?" with ["0-2", "2-4", "4 or more"] -> `revise`, [`non_exclusive_options`], response-options specialist.
+<!-- P2_EXAMPLE_START -->
+Example 1 input:
+```text
+question: During the past 7 days, how many evening workshops, if any, did you attend?
+response_options: ["0-2", "2-4", "4 or more"]
+```
 
-Example 2: "How easy or difficult was it to locate the visitor entrance?" with an agree/disagree scale -> `revise`, [`agree_disagree_scale`], response-options specialist.
+Example 1 output JSON:
+<!-- P2_OUTPUT_EXAMPLE_START -->
+```json
+{
+  "decision": "revise",
+  "taxonomy_labels": ["non_exclusive_options"],
+  "confidence": 0.99,
+  "evidence": "The value 2 fits both '0-2' and '2-4', and the value 4 fits both '2-4' and '4 or more'.",
+  "rationale": "The single-choice count categories have shared endpoints, so one supported response-option repair is clear.",
+  "recommended_route": "response_options_scale"
+}
+```
+<!-- P2_OUTPUT_EXAMPLE_END -->
+<!-- P2_EXAMPLE_END -->
 
-Example 3: "Which device do you use most often for video calls?" with ["Desktop or laptop computer", "Tablet", "Mobile phone", "Another device"] -> `accept`, no labels.
+<!-- P2_EXAMPLE_START -->
+Example 2 input:
+```text
+question: Please indicate how much you agree or disagree: I would find it easy to sort six postcards by date.
+response_options: ["Completely disagree", "Mostly disagree", "Neither agree nor disagree", "Mostly agree", "Completely agree"]
+```
+
+Example 2 output JSON:
+<!-- P2_OUTPUT_EXAMPLE_START -->
+```json
+{
+  "decision": "revise",
+  "taxonomy_labels": ["agree_disagree_scale"],
+  "confidence": 0.96,
+  "evidence": "A generic agreement scale is used to measure the anticipated ease of sorting six postcards by date.",
+  "rationale": "A direct ease/difficulty scale would measure the hypothetical task judgment more directly, and the defect belongs to one supported repair family.",
+  "recommended_route": "response_options_scale"
+}
+```
+<!-- P2_OUTPUT_EXAMPLE_END -->
+<!-- P2_EXAMPLE_END -->
+
+<!-- P2_EXAMPLE_START -->
+Example 3 input:
+```text
+question: Please describe what makes the instruction "Submit the form before noon" hard or easy to understand.
+response_options: ["Extremely hard", "Moderately hard", "Neither hard nor easy", "Moderately easy", "Extremely easy"]
+```
+
+Example 3 output JSON:
+<!-- P2_OUTPUT_EXAMPLE_START -->
+```json
+{
+  "decision": "revise",
+  "taxonomy_labels": ["open_closed_mismatch"],
+  "confidence": 0.98,
+  "evidence": "The stem requests a narrative description, but the supplied answers are fixed hard/easy categories.",
+  "rationale": "The open response request conflicts with the closed response mode, so a questionnaire-format repair is clear.",
+  "recommended_route": "questionnaire_format"
+}
+```
+<!-- P2_OUTPUT_EXAMPLE_END -->
+<!-- P2_EXAMPLE_END -->
+
+<!-- P2_EXAMPLE_START -->
+Example 4 input:
+```text
+question: During the past 7 days, on how many days, if any, did you prepare a meal at home?
+response_options: ["No days", "One or two days", "Three or four days", "Five or six days", "All seven days"]
+```
+
+Example 4 output JSON:
+<!-- P2_OUTPUT_EXAMPLE_START -->
+```json
+{
+  "decision": "accept",
+  "taxonomy_labels": [],
+  "confidence": 0.98,
+  "evidence": "The stem explicitly permits non-occurrence, the zero category records it, and every possible count from 0 through 7 belongs to exactly one response category.",
+  "rationale": "The bounded reference period, count request, and closed response options are compatible and show no supported defect.",
+  "recommended_route": "accept"
+}
+```
+<!-- P2_OUTPUT_EXAMPLE_END -->
+<!-- P2_EXAMPLE_END -->
 
 Return strict JSON only.

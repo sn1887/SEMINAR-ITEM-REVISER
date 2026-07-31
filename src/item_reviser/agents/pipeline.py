@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from item_reviser.agent_config import AgentRuntimeConfig
 from item_reviser.agents.item_reviser import ItemReviserAgent
 from item_reviser.agents.orchestration import OrchestratedItemReviser
 from item_reviser.agents.quality_checker import QualityCheckerAgent
-from item_reviser.agent_config import AgentRuntimeConfig
 from item_reviser.models.base import BaseLLM
 from item_reviser.orchestration.config import OrchestrationConfig
-from item_reviser.prompting import agent_prompt_config
+from item_reviser.prompting import (
+    agent_prompt_config,
+    validate_prompt_pipeline_compatibility,
+)
 from item_reviser.schemas import PipelineResult, RevisedItem, SurveyItem
 
 
@@ -22,6 +25,10 @@ class ItemReviserPipeline:
             raise ValueError("ItemReviserPipeline requires an LLM model.")
         self.agent_config = AgentRuntimeConfig.from_config(agent_config)
         self.orchestration_config = OrchestrationConfig.from_config(orchestration_config)
+        validate_prompt_pipeline_compatibility(
+            prompt_config,
+            orchestration_enabled=self.orchestration_config.enabled,
+        )
         self.orchestrator: OrchestratedItemReviser | None = None
         if self.orchestration_config.enabled:
             self.orchestrator = OrchestratedItemReviser(

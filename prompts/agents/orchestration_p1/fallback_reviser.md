@@ -32,11 +32,6 @@ ${retry_instructions}
 Retry count:
 ${retry_count}
 
-Severity interpretation:
-- `low`: minor risk; item is mostly answerable.
-- `medium`: likely affects interpretation or response quality.
-- `high`: likely invalidates the measurement or makes responses misleading.
-
 Revision principles:
 1. Preserve the construct and measurement focus expressed by the question and options.
 2. Fix only issues supported by the item and router evidence.
@@ -49,6 +44,17 @@ P1 operational safeguards:
 - Treat completeness, exclusivity, balance, anchoring, scale length, and stem-option alignment as different problems. Repair only the supported one.
 - Preserve a valid open response; do not call empty options incomplete by itself.
 - Add only necessary ordinary categories, remove overlapping boundaries, balance continuum coverage, label interpretable anchors, reduce unjustified precision, or align options to the stem as applicable.
-- Do not add refusal, `not applicable`, secondary labels, or unrelated wording changes without evidence. Explain any conservative limitation in revision notes.
+- Preserve every non-defective option property. Do not change wording, anchors, scale
+  length, order, polarity, or response format unless the corresponding defect is
+  independently supported.
+- Do not add refusal, `don't know`, `not applicable`, or secondary labels without
+  evidence; first determine whether an existing zero or negative answer already covers
+  nonparticipation.
+- Repair an open/closed format mismatch only when `open_closed_mismatch` itself is
+  supported; otherwise preserve the original response mode. Clear single-label format
+  cases belong to the `questionnaire_format` specialist, while fallback may handle an
+  independently supported ambiguous or multi-label format case.
+- Never introduce another taxonomy issue. Explain any conservative limitation in
+  revision notes, and preserve the original item when speculative repair is riskier.
 
 Return strict JSON only.

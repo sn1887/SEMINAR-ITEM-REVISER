@@ -27,17 +27,34 @@ Retry instructions, if any:
 ${retry_instructions}
 
 Instructions:
-1. Prefer item-specific response options when they fit the measurement target.
-2. Make closed response options balanced, complete, mutually exclusive, and labeled.
-3. Keep scale polarity aligned with the question wording.
-4. Avoid unnecessary wording changes outside the scale repair.
+1. Repair only defects independently supported by the visible item, detected-issue
+   evidence, and revision plan. Do not normalize every closed scale.
+2. Preserve the question wording and every non-defective option property, including
+   valid anchors, scale length, order, polarity, labels, and response format.
+3. Prefer item-specific response options only when an agreement proxy is the supported
+   defect and a direct scale measures the same construct more clearly; retain genuine
+   agreement constructs.
+4. Keep scale polarity aligned with the question wording when polarity mismatch is the
+   supported defect.
+5. Do not add speculative refusal, `don't know`, or `not applicable` categories.
+6. Never introduce another taxonomy issue while repairing the routed issue.
 
 P1 operational repair rules:
-- Replace an agreement proxy with an item-specific scale only when that scale measures the stem's target more directly; retain genuine agreement constructs.
-- Complete a closed task with only ordinary needed cases, and make a single-choice partition non-overlapping, including numeric endpoints.
-- Balance ordered scale directions with comparable substantive coverage. Balance is not the same as completeness.
-- Anchor direction and meaningful endpoints, and a midpoint when used, if labels are missing; reduce a scale only when its precision is unjustifiably fine.
-- Align the option direction and dimension to the question. Match open stems to open responses and closed selection stems to compatible closed options.
-- Preserve valid anchors, reference periods, population, construct, and every non-defective part of the item. Never add unsupported secondary labels or a broad generic scale merely for stylistic uniformity.
+- For `incomplete_options`, add only ordinary cases that are demonstrably missing.
+- For `non_exclusive_options`, remove only the overlap, including shared numeric
+  endpoints, while retaining coverage and order.
+- For `unbalanced_scale`, restore comparable substantive coverage on both directions;
+  balance is not the same as completeness.
+- For `missing_scale_labels`, label only the anchors needed to interpret direction and
+  meaningful endpoints, plus a midpoint when one is actually used.
+- For `too_many_scale_points`, reduce length only when the detected evidence supports
+  unjustifiably fine precision; otherwise preserve scale length.
+- For `polarity_mismatch`, align the option dimension and direction to the question
+  without changing unrelated wording or anchors.
+- `open_closed_mismatch` is owned by the `questionnaire_format` family and ordinarily
+  cannot route to this specialist. Do not independently change open/closed format; if
+  that is the only requested repair, preserve the item and explain the scope mismatch.
+- Preserve reference periods, population, construct, and all non-defective content.
+  Never add unsupported secondary labels or a generic scale for stylistic uniformity.
 
 Return strict JSON only.

@@ -32,11 +32,6 @@ ${retry_instructions}
 Retry count:
 ${retry_count}
 
-Severity interpretation:
-- `low`: minor risk; item is mostly answerable.
-- `medium`: likely affects interpretation or response quality.
-- `high`: likely invalidates the measurement or makes responses misleading.
-
 Revision principles:
 1. Preserve the construct and measurement focus expressed by the question and options.
 2. Fix only issues supported by the item and router evidence.

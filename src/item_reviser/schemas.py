@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-
 ROUTER_DECISIONS = {"accept", "revise", "fallback"}
 ORCHESTRATION_ROUTES = {
     "single_pass",
@@ -74,7 +73,7 @@ class SurveyItem:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "SurveyItem":
+    def from_dict(cls, data: dict[str, Any]) -> SurveyItem:
         expected_revision = data.get("expected_revision", {})
         if not isinstance(expected_revision, dict):
             expected_revision = {"question": "", "response_options": []}
@@ -143,7 +142,7 @@ class RouterDecision:
     recommended_route: str = "fallback"
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "RouterDecision":
+    def from_dict(cls, data: dict[str, Any]) -> RouterDecision:
         decision = _require_choice(
             str(data.get("decision", "fallback") or "fallback"),
             ROUTER_DECISIONS,
@@ -171,7 +170,7 @@ class RevisionPlan:
     rationale: str = ""
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "RevisionPlan":
+    def from_dict(cls, data: dict[str, Any]) -> RevisionPlan:
         return cls(
             repair_family=_require_choice(
                 str(data.get("repair_family", "fallback") or "fallback"),
@@ -210,7 +209,7 @@ class ReviserAgentOutput:
         *,
         original_item: SurveyItem,
         agent_name: str,
-    ) -> "ReviserAgentOutput":
+    ) -> ReviserAgentOutput:
         response_options = data.get("response_options", original_item.response_options)
         if not isinstance(response_options, list):
             response_options = original_item.response_options
@@ -242,12 +241,17 @@ class ValidatorResult:
     rationale: str = ""
     retry_instructions: list[str] = field(default_factory=list)
     preserves_construct: bool = False
-    fixes_detected_issue: bool = False
+    fixes_detected_issue: bool | None = None
     introduces_new_issue: bool = False
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ValidatorResult":
-        return cls(
+    def from_dict(
+        cls,
+        data: dict[str, Any],
+        *,
+        has_detected_issues: bool | None = None,
+    ) -> ValidatorResult:
+        result = cls(
             status=_require_choice(
                 str(data.get("status", "manual_review") or "manual_review"),
                 VALIDATION_STATUSES,
@@ -256,8 +260,54 @@ class ValidatorResult:
             rationale=str(data.get("rationale", "") or ""),
             retry_instructions=_as_str_list(data.get("retry_instructions")),
             preserves_construct=bool(data.get("preserves_construct", False)),
-            fixes_detected_issue=bool(data.get("fixes_detected_issue", False)),
+            fixes_detected_issue=(
+                None
+                if data.get("fixes_detected_issue") is None
+                else bool(data["fixes_detected_issue"])
+            ),
             introduces_new_issue=bool(data.get("introduces_new_issue", False)),
+        )
+        return result.enforce_pass_invariants(
+            has_detected_issues=has_detected_issues
+        )
+
+    def enforce_pass_invariants(
+        self,
+        *,
+        has_detected_issues: bool | None = None,
+    ) -> ValidatorResult:
+        """Downgrade contradictory pass outputs before orchestration trusts them."""
+
+        if self.status != "pass":
+            return self
+
+        violations: list[str] = []
+        if not self.preserves_construct:
+            violations.append("preserves_construct must be true")
+        if self.introduces_new_issue:
+            violations.append("introduces_new_issue must be false")
+        if self.retry_instructions:
+            violations.append("retry_instructions must be empty")
+        if has_detected_issues is True and self.fixes_detected_issue is not True:
+            violations.append("fixes_detected_issue must be true with detected issues")
+        elif has_detected_issues is False and self.fixes_detected_issue is not None:
+            violations.append("fixes_detected_issue must be null without detected issues")
+        elif has_detected_issues is None and self.fixes_detected_issue is False:
+            violations.append("fixes_detected_issue must not be false for pass")
+
+        if not violations:
+            return self
+
+        status = "retry" if self.retry_instructions else "manual_review"
+        rationale = self.rationale.strip()
+        suffix = "Contradictory validator pass downgraded: " + "; ".join(violations) + "."
+        return ValidatorResult(
+            status=status,
+            rationale=f"{rationale} {suffix}".strip(),
+            retry_instructions=list(self.retry_instructions) if status == "retry" else [],
+            preserves_construct=self.preserves_construct,
+            fixes_detected_issue=self.fixes_detected_issue,
+            introduces_new_issue=self.introduces_new_issue,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -280,7 +330,7 @@ class OrchestrationTrace:
     attempts: list[dict[str, Any]] = field(default_factory=list)
 
     @classmethod
-    def disabled(cls) -> "OrchestrationTrace":
+    def disabled(cls) -> OrchestrationTrace:
         return cls()
 
     def add_attempt(self, **values: Any) -> None:
