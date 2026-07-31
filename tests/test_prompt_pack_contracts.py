@@ -303,6 +303,25 @@ def test_every_nested_p2_output_is_json_and_matches_its_exact_runtime_schema():
                     )
 
 
+def test_p2_example_inventory_matches_the_frozen_experiment_design():
+    expected_counts = {
+        "baseline_p2/quality_checker.md": 4,
+        "baseline_p2/item_reviser.md": 4,
+        "orchestration_p2/router.md": 5,
+        "orchestration_p2/fallback_reviser.md": 3,
+        "orchestration_p2/specialist_response_options_scale.md": 5,
+        "orchestration_p2/specialist_questionnaire_format.md": 2,
+        "orchestration_p2/validator.md": 5,
+    }
+
+    actual_counts = {
+        relative_path: len(_example_blocks(relative_path))
+        for relative_path in expected_counts
+    }
+    assert actual_counts == expected_counts
+    assert sum(actual_counts.values()) == 28
+
+
 def test_p2_examples_use_only_canonical_runtime_identifiers():
     for relative_path in P2_ROLE_SCHEMAS:
         for index, block in enumerate(_example_blocks(relative_path), start=1):
@@ -450,7 +469,7 @@ def test_p2_validator_demos_and_nullable_clean_path_follow_runtime_contract():
         for block in _example_blocks("orchestration_p2/validator.md")
     ]
     by_status = {output["status"]: (input_payload, output) for input_payload, output in examples}
-    assert {"pass", "retry", "manual_review"} <= set(by_status)
+    assert {"pass", "retry", "manual_review", "failed"} <= set(by_status)
 
     pass_input, pass_output = by_status["pass"]
     assert pass_input["detected_issues"] == []
@@ -466,6 +485,12 @@ def test_p2_validator_demos_and_nullable_clean_path_follow_runtime_contract():
     assert review_input["detected_issues"]
     assert review_output["fixes_detected_issue"] is False
     assert review_output["retry_instructions"] == []
+
+    failed_input, failed_output = by_status["failed"]
+    assert isinstance(failed_input["candidate_revision"], dict)
+    assert not failed_input["candidate_revision"]["question"].strip()
+    assert failed_output["fixes_detected_issue"] is False
+    assert failed_output["retry_instructions"] == []
 
     assert ValidatorResult.from_dict(pass_output).fixes_detected_issue is None
     assert ValidatorResult.from_dict(retry_output).fixes_detected_issue is False

@@ -1,57 +1,54 @@
 # Error taxonomy for the item-reviser project.
-# This file is a config-level mirror of src/item_reviser/constants.py.
-# Severity levels are item-specific annotations, not fixed category properties.
-# low: minor risk; item mostly answerable.
-# medium: likely affects interpretation or response quality.
-# high: likely invalidates measurement or makes responses misleading.
-# Severity reflects expected measurement harm, not model confidence, benchmark
-# difficulty, or revision effort.
+# Category identifiers remain an exact config-level mirror of
+# src/item_reviser/constants.py. Severity is item-specific:
+# low = minor but real risk; medium = likely interpretation/response-quality harm;
+# high = likely invalid measurement or misleading answers.
 categories:
   leading_question:
     family: wording
-    description: Wording suggests a preferred answer.
+    description: Wording steers respondents toward a preferred answer.
   loaded_question:
     family: wording
-    description: Question presupposes something that may not be true.
+    description: The stem presupposes an unverified fact, behavior, attitude, or outcome.
   double_barreled:
     family: wording
-    description: One request asks about more than one concept.
+    description: One answer is required for two separable constructs that could differ.
   recall_error:
     family: wording
-    description: Reference period or task makes accurate recall unlikely.
+    description: The reference period or memory task makes accurate recall implausible.
   vague_ambiguous:
     family: wording
-    description: Key concepts are undefined, subjective, or unclear.
+    description: A key term, quantifier, comparison, population, or time frame is undefined.
   sensitive_topic_direct:
     family: wording
-    description: Sensitive or socially desirable topic asked too directly.
+    description: Sensitive or stigmatized content is asked too bluntly without proportionate respondent protection.
   social_desirability:
     family: wording
-    description: Item likely encourages norm-conforming answers.
+    description: Normative or identity framing pressures favorable self-presentation.
   negative_wording:
     family: wording
-    description: Negatives or double negatives may confuse respondents.
+    description: Negation, including a reverse construction such as “fail to” plus a behavior, makes the requested direction confusing.
   open_closed_mismatch:
     family: structure
-    description: Open/closed format does not match the measurement goal.
+    description: The stem's requested open, exact-entry, or closed task conflicts with the supplied response format.
   agree_disagree_scale:
     family: scale
-    description: Agree/disagree scale used where item-specific response options are preferable.
+    description: Generic agreement options proxy for a more direct item-specific response scale.
   unbalanced_scale:
     family: scale
-    description: Response options favor one side of the scale.
+    description: An ordered continuum gives asymmetric category or intensity coverage to its two directions.
   incomplete_options:
     family: scale
-    description: Closed response options omit plausible categories.
+    description: A closed response set omits a concrete ordinary case needed by the stated task.
   non_exclusive_options:
     family: scale
-    description: Single-choice response options overlap.
+    description: Two or more single-choice response options overlap.
   missing_scale_labels:
     family: scale
-    description: Numeric scale lacks meaningful labels.
+    description: Numeric or terse scale points lack the anchors needed to interpret direction and meaning.
   too_many_scale_points:
     family: scale
-    description: Scale has more points than recommended for most survey contexts.
+    description: The scale demands unjustifiably fine distinctions for the construct.
   polarity_mismatch:
     family: scale
-    description: Concept polarity and response scale polarity are misaligned.
+    description: Response options measure a different direction, construct, unit, or dimension from the stem.

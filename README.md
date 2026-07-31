@@ -207,10 +207,10 @@ The final matrix keeps `baseline_codebook` and `orchestration_codebook` as P0
 controls. P1 (`baseline_p1`, `orchestration_p1`) is additive: it preserves the
 P0 codebook, taxonomy boundaries, clean-item rules, severity guidance, routing
 behavior, and revision safeguards, then adds operational response-option rules.
-P2 (`baseline_p2`, `orchestration_p2`) preserves P1 and adds three independently
-authored calibration examples. All four are opt-in Hydra choices. P2 examples
-are automatically checked for exact and near overlap with v4 questions and gold
-revisions.
+P2 (`baseline_p2`, `orchestration_p2`) preserves P1 and adds 28 independently
+authored, role-specific calibration examples across the two runtime paths. All six
+P0/P1/P2 prompt packs are opt-in Hydra choices. P2 examples are automatically checked
+for exact and near overlap with v4 questions and gold revisions.
 
 ---
 

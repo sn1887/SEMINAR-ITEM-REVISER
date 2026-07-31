@@ -21,13 +21,12 @@ enabled only in block D. P0 selects `baseline_codebook` or
 `orchestration_codebook`; P1 selects `baseline_p1` or `orchestration_p1`; P2
 selects `baseline_p2` or `orchestration_p2`.
 
-P0 remains zero-shot and example-free. Three narrow consistency repairs affect
-the control: its loaded/completeness boundary no longer suppresses unrelated
-independent labels; its orchestration router drops an unreachable severity
-instruction because the router schema has no severity field; and its shared
-validator makes `fixes_detected_issue` nullable/not applicable when no issue was
-detected on the clean accept path. Taxonomy and revision rules otherwise remain
-unchanged.
+P0 remains zero-shot and example-free. Before the final experiment freeze, its
+taxonomy definitions, pairwise boundaries, evidence gate, clean-item preservation,
+minimal-revision rules, and orchestration role contracts were clarified across all 16
+labels. These changes make P0 a stronger final control than the earlier interim prompt;
+the final v4 runs must therefore be compared within this frozen matrix rather than
+treated as direct continuations of the earlier prompt version.
 
 The known treatment configs are pipeline-specific. Baseline packs fail fast
 when orchestration is enabled, and orchestration packs fail fast on the baseline
@@ -42,20 +41,25 @@ and open/closed-format decisions:
 
 | Role | Demonstrations |
 | --- | ---: |
-| Baseline checker / reviser | 3 / 3 |
-| Orchestration router / fallback | 4 / 3 |
-| Response-options / questionnaire-format specialist | 3 / 2 |
-| Validator | 3 |
+| Baseline checker / reviser | 4 / 4 |
+| Orchestration router / fallback | 5 / 3 |
+| Response-options / questionnaire-format specialist | 5 / 2 |
+| Validator | 5 |
 | Planner / wording / construct / bias | 0 each; P0 reused |
 
-The examples directly exercise `agree_disagree_scale`, `incomplete_options`,
-`non_exclusive_options`, `missing_scale_labels`, and
-`open_closed_mismatch`, plus clean-item preservation and validation decisions.
-The option categories `unbalanced_scale`, `too_many_scale_points`, and
-`polarity_mismatch` have no direct P2 example. Improvements outside the
-demonstrated categories may reflect P1 operational rules or model
-generalization, not a direct in-context-example effect. The per-role boundaries
-are recorded in `prompts/agents/README.md`.
+The 28 examples directly exercise all seven response-option/scale labels:
+`agree_disagree_scale`, `unbalanced_scale`, `incomplete_options`,
+`non_exclusive_options`, `missing_scale_labels`, `too_many_scale_points`, and
+`polarity_mismatch`. They also exercise `open_closed_mismatch`, clean-item
+preservation, routing, fallback restraint, and validation decisions. The remaining
+eight taxonomy labels have no direct P2 example; improvements for them reflect the
+zero-shot rules or model generalization rather than a direct in-context-example effect.
+The per-role boundaries are recorded in `prompts/agents/README.md`.
+
+The revised prompts are longer than the interim versions, especially for the P2
+baseline reviser, response-options specialist, and validator. Run the documented GPU
+preflight before submitting the full matrix and retain measured runtime rather than
+assuming the interim per-item timing.
 
 ## Validate without scheduling
 
