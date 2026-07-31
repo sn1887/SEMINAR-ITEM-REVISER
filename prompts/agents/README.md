@@ -34,8 +34,8 @@ router, planner, specialists, fallback reviser, and validator.
   routing, fallback, and validation decisions. It is not representative few-shot
   coverage of all 16 taxonomy labels.
 
-The build validation report checks literal P0→P1→P2 containment after the final JSON
-instruction is normalized.
+`tests/test_contamination_controls.py` checks literal P0→P1→P2 containment after
+the final JSON instruction is normalized.
 
 ## Canonical runtime identifiers
 
@@ -81,14 +81,15 @@ Validator statuses: `pass`, `retry`, `manual_review`, `failed`.
 | Fallback reviser | 3 | Same-family multi-label repair; low-confidence restraint; unchanged unsupported repair |
 | Response-options specialist | 5 | Overlap repair; agreement repair; polarity/dimension repair; rejection of speculative completeness; scale balance |
 | Questionnaire-format specialist | 2 | Open narrative paired with fixed rating; exact-entry request paired with grouped ranges |
-| Validator | 5 | Clean pass/null; repaired-issue pass/true; retry; manual review; failed/unavailable candidate |
+| Validator | 5 | Clean pass/null; repaired-issue pass/true; retry; manual review; failed/unusable candidate |
 | Planner, wording, construct, bias | 0 | No P2 demonstration; zero-shot role rules retained |
 
 The P2 questions and constructs were independently authored outside the v4 200-item
-benchmark. The package validation report records exact-match and lexical/character
-similarity checks. Structural resemblance such as an overlapping numeric boundary is
-intentional because P2 is specifically a response-option calibration treatment; the
-wording, domain, and construct are independent.
+benchmark. The contamination-control tests check exact matches and lexical/character
+similarity against benchmark questions and expected revisions. Structural resemblance
+such as an overlapping numeric boundary is intentional because P2 is specifically a
+response-option calibration treatment; the wording, domain, and construct are
+independent.
 
 ## Model-facing data boundary
 

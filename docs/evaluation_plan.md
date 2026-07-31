@@ -61,13 +61,10 @@ Each record has:
 
 - P0 is the zero-shot codebook control: `baseline_codebook` or
   `orchestration_codebook` according to the runtime pipeline. It remains
-  example-free. Three narrow consistency repairs affect P0: the loaded versus
-  completeness rule no longer suppresses unrelated independent labels; the
-  orchestration router drops an unreachable severity instruction because its
-  schema has no severity field; and the shared validator makes
-  `fixes_detected_issue` nullable/not applicable when the clean accept path has
-  no detected issue. The taxonomy and revision rules otherwise remain
-  unchanged.
+  example-free. For the final experiment freeze, all 16 definitions, pairwise
+  boundaries, evidence requirements, clean-item preservation rules, minimal-revision
+  rules, and orchestration role contracts were clarified. It is therefore the final
+  v4 control, not an unchanged copy of the interim prompt.
 - P1 preserves P0 and adds operational response-option rules. The orchestrated
   treatment also gives `open_closed_mismatch` to a P1 questionnaire-format
   specialist.
@@ -75,15 +72,13 @@ Each record has:
   It is a targeted response-option and format calibration treatment, not
   unrestricted few-shot coverage of the taxonomy.
 
-P2 directly demonstrates `agree_disagree_scale`, `incomplete_options`,
-`non_exclusive_options`, `missing_scale_labels`, and
-`open_closed_mismatch`, together with clean-item preservation and validator
-decisions. It has no direct example for `unbalanced_scale`,
-`too_many_scale_points`, or `polarity_mismatch`; the planner, wording,
-construct, and bias roles receive zero examples and reuse P0. Improvements
-outside demonstrated categories may therefore arise from P1 rules or model
-generalization rather than direct in-context examples. Exact per-role counts
-and boundaries are listed in `prompts/agents/README.md`.
+P2 contains 28 role-specific examples and directly demonstrates all seven
+response-option/scale labels plus `open_closed_mismatch`, clean-item preservation,
+routing, fallback restraint, and validator decisions. The planner, wording,
+construct, and bias roles receive zero examples and reuse P0. Improvements for the
+other eight taxonomy labels may therefore arise from zero-shot rules or model
+generalization rather than direct in-context examples. Exact per-role counts and
+boundaries are listed in `prompts/agents/README.md`.
 
 ## Evaluation modes
 

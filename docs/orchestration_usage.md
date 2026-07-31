@@ -125,8 +125,9 @@ intentionally supply both sets of slots.
 P1 adds operational response-option and format rules. P2 adds a fixed, targeted
 set of option/format calibration examples; it is not unrestricted few-shot
 prompting for every taxonomy category. See `prompts/agents/README.md` for the
-per-role example counts, demonstrated boundaries, and categories without a
-direct example.
+per-role example counts and demonstrated boundaries. The response-option/scale and
+open/closed-format labels receive direct examples; the other eight taxonomy labels do
+not.
 
 P0 remains zero-shot and example-free. Its loaded/completeness boundary no
 longer suppresses unrelated independent labels, its orchestration router drops

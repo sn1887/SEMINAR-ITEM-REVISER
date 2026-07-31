@@ -444,78 +444,35 @@ def test_p1_p2_templates_contain_no_forbidden_inference_placeholders():
         assert banned not in prompt_text
 
 
-def _taxonomy_boundary_lines(relative_path: str) -> list[str]:
-    text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
-    _, marker, tail = text.partition("Taxonomy boundary rules:")
-    assert marker, f"Missing taxonomy section in {relative_path}"
-    section = tail.partition("Return strict JSON only.")[0]
-    return [line.strip() for line in section.splitlines() if line.strip().startswith("- `")]
-
-
-def _assert_contains_all(target_relative_path: str, snippets: list[str]) -> None:
-    target = (REPO_ROOT / target_relative_path).read_text(encoding="utf-8")
-    for snippet in snippets:
-        assert snippet in target, f"Missing P0 snippet in {target_relative_path}: {snippet}"
+def _prompt_body(relative_path: str) -> str:
+    text = (REPO_ROOT / "prompts/agents" / relative_path).read_text(encoding="utf-8")
+    body, marker, _ = text.rpartition("Return strict JSON only.")
+    assert marker, f"Missing final JSON instruction in {relative_path}"
+    return body.rstrip()
 
 
 def test_p1_p2_prompt_ablation_preserves_p0_codebook_content():
-    baseline_taxonomy = _taxonomy_boundary_lines(
-        "prompts/agents/baseline_codebook/quality_checker.md"
-    )
-    orchestration_taxonomy = _taxonomy_boundary_lines(
-        "prompts/agents/orchestration_codebook/router.md"
-    )
-    baseline_quality_snippets = [
-        "Decision protocol:",
-        "Judge only the visible question and response options.",
-        "If no defect is present, return no errors.",
-        "Do not flag an item merely because it could be stylistically improved.",
-        "Severity definitions:",
-        "Calibrate severity by likely impact on respondent interpretation and measurement validity",
-        *baseline_taxonomy,
-    ]
-    baseline_reviser_snippets = [
-        "Severity interpretation:",
-        "Revision principles:",
-        "Preserve the construct expressed by the item.",
-        "Fix only the detected, independently supported problems.",
-        "If no defect is present, preserve the item unchanged and set `changed` to false.",
-        "If the detected evidence does not establish a real taxonomy issue",
-    ]
-    orchestration_router_snippets = [
-        "Decision protocol:",
-        "Return `accept` when the item is already a sound questionnaire item.",
-        "Return `fallback` for low-confidence, ambiguous, mixed, unsupported",
-        "If no defect is present, return no taxonomy labels and recommend `accept`.",
-        "The router output has no severity field.",
-        "Do not assign or claim to predict",
-        *orchestration_taxonomy,
-    ]
-    orchestration_fallback_snippets = [
-        "Revision principles:",
-        "Preserve the construct and measurement focus expressed by the question and options.",
-        "Fix only issues supported by the item and router evidence.",
-        "If no defect is present or the evidence does not establish a real taxonomy issue",
+    p0_p1_pairs = [
+        ("baseline_codebook/quality_checker.md", "baseline_p1/quality_checker.md"),
+        ("baseline_codebook/item_reviser.md", "baseline_p1/item_reviser.md"),
+        ("orchestration_codebook/router.md", "orchestration_p1/router.md"),
+        (
+            "orchestration_codebook/fallback_reviser.md",
+            "orchestration_p1/fallback_reviser.md",
+        ),
+        (
+            "orchestration/specialist_response_options_scale.md",
+            "orchestration_p1/specialist_response_options_scale.md",
+        ),
+        (
+            "orchestration/specialist_questionnaire_format.md",
+            "orchestration_p1/specialist_questionnaire_format.md",
+        ),
+        ("orchestration/validator.md", "orchestration_p1/validator.md"),
     ]
 
-    for pack in ("baseline_p1", "baseline_p2"):
-        _assert_contains_all(
-            f"prompts/agents/{pack}/quality_checker.md",
-            baseline_quality_snippets,
-        )
-        _assert_contains_all(
-            f"prompts/agents/{pack}/item_reviser.md",
-            baseline_reviser_snippets,
-        )
-    for pack in ("orchestration_p1", "orchestration_p2"):
-        _assert_contains_all(
-            f"prompts/agents/{pack}/router.md",
-            orchestration_router_snippets,
-        )
-        _assert_contains_all(
-            f"prompts/agents/{pack}/fallback_reviser.md",
-            orchestration_fallback_snippets,
-        )
+    for p0_relative_path, p1_relative_path in p0_p1_pairs:
+        assert _prompt_body(p0_relative_path) in _prompt_body(p1_relative_path)
 
 
 def test_p2_prompt_ablation_contains_p1_rules_plus_fixed_examples():
@@ -536,15 +493,10 @@ def test_p2_prompt_ablation_contains_p1_rules_plus_fixed_examples():
     ]
 
     for p1_relative_path, p2_relative_path in p1_p2_pairs:
-        p1_text = (REPO_ROOT / "prompts/agents" / p1_relative_path).read_text(
-            encoding="utf-8"
-        )
+        p1_text = _prompt_body(p1_relative_path)
         p2_text = (REPO_ROOT / "prompts/agents" / p2_relative_path).read_text(
             encoding="utf-8"
         )
-        p1_operational_body = p1_text.rsplit("Return strict JSON only.", maxsplit=1)[0].rstrip()
-        assert p1_operational_body in p2_text
-        assert (
-            "Fixed calibration examples, authored from general survey-design principles:"
-            in p2_text
-        )
+        assert p1_text in p2_text
+        assert "<!-- P2_EXAMPLE_START -->" in p2_text
+        assert "<!-- P2_OUTPUT_EXAMPLE_START -->" in p2_text
