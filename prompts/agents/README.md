@@ -1,64 +1,97 @@
 # Agent Prompt Layout
 
-Prompt bodies are separated by treatment and runtime path:
+This directory contains separate prompt packs for two runtime roles and three
+additive experimental conditions.
 
-- `baseline/`: prompts used by the default non-orchestrated pipeline when
-  `orchestration.enabled=false`.
-- `baseline_codebook/`: the P0 zero-shot codebook control for the baseline
-  checker and reviser.
-- `orchestration/`: prompts used by the opt-in router, planner, specialist,
-  fallback, and validator workflow. These files also supply the P0 roles reused
-  by later orchestration treatments.
-- `orchestration_codebook/`: the P0 zero-shot codebook router and fallback
-  control; its other orchestration roles come from `orchestration/`.
-- `baseline_p1/`: P0 baseline content plus operational response-option rules.
-- `orchestration_p1/`: P1 router, fallback, response-options specialist,
-  questionnaire-format specialist, and validator. The planner and wording,
-  construct, and bias specialists reuse P0 files from `orchestration/`.
-- `baseline_p2/` and `orchestration_p2/`: P1 plus fixed, independently authored
-  role-appropriate calibration examples. P2 is targeted response-option and
-  open/closed-format calibration, not unrestricted few-shot prompting across all
-  taxonomy labels.
+## Runtime paths
 
-P0 remains zero-shot and receives no calibration example. Three narrow
-consistency repairs affect its shared rules: the loaded/completeness boundary no
-longer suppresses unrelated independent labels; the orchestration router no
-longer discusses severity because its schema has no severity field; and the
-validator uses nullable/not-applicable `fixes_detected_issue` on a clean accept
-path. The taxonomy and revision rules otherwise remain unchanged.
+- `baseline/`: default non-orchestrated checker and reviser prompts.
+- `baseline_codebook/`: baseline P0 zero-shot taxonomy-codebook control.
+- `baseline_p1/`: baseline P0 behavior plus operational response-option and
+  questionnaire-format procedures.
+- `baseline_p2/`: baseline P1 behavior plus fixed targeted calibration examples.
+- `orchestration/`: shared router/planner/specialist/fallback/validator role prompts.
+  The planner and wording, construct, and bias specialists are reused across P0–P2.
+- `orchestration_codebook/`: orchestrated P0 router and fallback control.
+- `orchestration_p1/`: P0 orchestration behavior plus operational option/format rules.
+- `orchestration_p2/`: P1 orchestration behavior plus fixed targeted examples.
 
-## P2 Demonstration Scope
+Keep baseline and orchestrated prompt packs separate. Baseline prompts perform a
+checker-then-reviser workflow; orchestration prompts divide responsibility among the
+router, planner, specialists, fallback reviser, and validator.
 
-| Runtime role | Examples | Demonstrated boundary or behavior |
+## Additive experimental design
+
+- **P0 — zero-shot taxonomy codebook control.** Uses all 16 canonical definitions,
+  explicit boundaries, an evidence gate, independent-label logic, and clean-item
+  preservation without demonstrations.
+- **P1 — operational response-option and format rules.** Retains P0 verbatim and adds
+  ordered procedures for response mode, item-specific dimension/unit, agreement
+  proxies, completeness, exclusivity, balance, labels, granularity, polarity, and
+  open/closed compatibility.
+- **P2 — targeted role-specific few-shot calibration.** Retains P1 verbatim and adds
+  schema-valid examples only for selected response-option, scale, format, clean-path,
+  routing, fallback, and validation decisions. It is not representative few-shot
+  coverage of all 16 taxonomy labels.
+
+The build validation report checks literal P0→P1→P2 containment after the final JSON
+instruction is normalized.
+
+## Canonical runtime identifiers
+
+Taxonomy labels:
+`leading_question`, `loaded_question`, `double_barreled`, `recall_error`,
+`vague_ambiguous`, `sensitive_topic_direct`, `social_desirability`,
+`negative_wording`, `open_closed_mismatch`, `agree_disagree_scale`,
+`unbalanced_scale`, `incomplete_options`, `non_exclusive_options`,
+`missing_scale_labels`, `too_many_scale_points`, and `polarity_mismatch`.
+
+Router decisions: `accept`, `revise`, `fallback`.
+
+Repair families: `wording_clarity`, `response_options_scale`,
+`construct_alignment`, `bias_sensitivity`, `questionnaire_format`, `fallback`.
+
+Agent identifiers: `router`, `revision_planner`, `fallback_reviser`, `validator`,
+`wording_clarity`, `response_options_scale`, `construct_alignment`,
+`bias_sensitivity`, `questionnaire_format`.
+
+Validator statuses: `pass`, `retry`, `manual_review`, `failed`.
+
+## Role responsibilities
+
+- **Router:** detect/rank no repairs; accept clean items, route one clear supported
+  defect to its canonical family, and use fallback for multi-label, low-confidence,
+  conflicting, unsupported, or ambiguous cases.
+- **Planner:** translate the fixed routed issue set into a minimal family/agent plan;
+  never add or remove labels and never rewrite the item.
+- **Specialists:** repair only their routed family and preserve all unrelated content.
+- **Fallback reviser:** coordinate independently supported multi-label repairs and
+  behave conservatively under uncertainty or unsupported evidence.
+- **Validator:** evaluate rather than rewrite; distinguish `pass`, focused `retry`,
+  `manual_review`, and the narrow unevaluable `failed` condition. On the clean path,
+  `fixes_detected_issue` is exactly `null`; with detected issues it is boolean.
+
+## P2 demonstration scope
+
+| Runtime role | Examples | Targeted behavior |
 | --- | ---: | --- |
-| Baseline quality checker | 3 | Overlap versus completeness; agreement proxy versus an item-specific construct; clean-item acceptance |
-| Baseline item reviser | 3 | Minimal overlap repair; direct item-specific scale repair; unchanged clean item |
-| Orchestration router | 4 | `non_exclusive_options` routing; `agree_disagree_scale` routing; `open_closed_mismatch` routing; clean `accept` |
-| Fallback reviser | 3 | Same-family `incomplete_options` + `non_exclusive_options`; conservative low-confidence `missing_scale_labels`; preservation when an `incomplete_options` repair would be speculative |
-| Response-options specialist | 3 | Minimal `non_exclusive_options` repair; `agree_disagree_scale` repair; rejection of a speculative `incomplete_options` addition |
-| Questionnaire-format specialist | 2 | Open narrative paired with fixed ratings; exact-entry request paired with grouped closed categories |
-| Validator | 3 | Clean accept-path `pass`; focused `retry` for an unfixed overlap; `manual_review` for construct drift |
-| Planner, wording, construct, and bias roles | 0 | No P2 demonstration; unchanged P0 prompts |
+| Baseline quality checker | 4 | Overlap-only detection; agreement proxy; independently supported long-scale labels; clean acceptance |
+| Baseline item reviser | 4 | Minimal overlap repair; item-specific scale; coordinated long-scale repair; exact clean preservation |
+| Orchestration router | 5 | Single-label option routing; agreement routing; format routing; multi-label fallback; clean acceptance |
+| Fallback reviser | 3 | Same-family multi-label repair; low-confidence restraint; unchanged unsupported repair |
+| Response-options specialist | 5 | Overlap repair; agreement repair; polarity/dimension repair; rejection of speculative completeness; scale balance |
+| Questionnaire-format specialist | 2 | Open narrative paired with fixed rating; exact-entry request paired with grouped ranges |
+| Validator | 5 | Clean pass/null; repaired-issue pass/true; retry; manual review; failed/unavailable candidate |
+| Planner, wording, construct, bias | 0 | No P2 demonstration; zero-shot role rules retained |
 
-The option categories with no direct P2 demonstration are `unbalanced_scale`,
-`too_many_scale_points`, and `polarity_mismatch`. P1 still gives operational
-rules for them. Any P2 improvement on those categories, or on wording,
-construct, and bias categories, must be interpreted as rule use or
-generalization rather than a direct in-context-example effect.
+The P2 questions and constructs were independently authored outside the v4 200-item
+benchmark. The package validation report records exact-match and lexical/character
+similarity checks. Structural resemblance such as an overlapping numeric boundary is
+intentional because P2 is specifically a response-option calibration treatment; the
+wording, domain, and construct are independent.
 
-## Runtime Selection
+## Model-facing data boundary
 
-The active prompt slots and file paths are configured in
-`configs/prompt/*.yaml`. Known treatment packs are pipeline-specific and fail
-fast when paired incorrectly:
-
-| Treatment | Baseline pipeline (`orchestration.enabled=false`) | Orchestrated pipeline (`orchestration.enabled=true`) |
-| --- | --- | --- |
-| P0 | `prompt=baseline_codebook` | `prompt=orchestration_codebook` |
-| P1 | `prompt=baseline_p1` | `prompt=orchestration_p1` |
-| P2 | `prompt=baseline_p2` | `prompt=orchestration_p2` |
-
-Unnamed, custom, and `prompt=default` configurations remain usable on either
-path. The P1/P2 orchestration configs wire `questionnaire_format` to their
-matching P1/P2 specialist file, so `open_closed_mismatch` does not fall back to
-the P0 format prompt.
+Prompts may receive only the visible question, response options, and runtime-generated
+issue/routing/revision context. They must not expose benchmark item IDs, gold labels,
+expected revisions, topics, target concepts, metadata, or review notes.
