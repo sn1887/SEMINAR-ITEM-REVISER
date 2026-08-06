@@ -375,7 +375,7 @@ Output JSON:
 <!-- P2_EXAMPLE_END -->
 
 <!-- P2_EXAMPLE_START -->
-Calibration example — failed is reserved for schema-valid but unusable candidate content
+Calibration example — failed is reserved for an unavailable candidate payload
 
 Input JSON:
 ```json
@@ -416,14 +416,7 @@ Input JSON:
     "fallback_reason": null,
     "rationale": "Preserve the five-point noticeability scale."
   },
-  "candidate_revision": {
-    "question": "   ",
-    "response_options": [],
-    "revision_notes": [
-      "Candidate generation returned no usable item content."
-    ],
-    "changed": true
-  },
+  "candidate_revision": null,
   "remaining_retry_budget": 0
 }
 ```
@@ -433,7 +426,7 @@ Output JSON:
 ```json
 {
   "status": "failed",
-  "rationale": "The candidate contains no usable question or response options, so construct preservation and issue repair cannot be evaluated.",
+  "rationale": "The candidate payload is unavailable, so construct preservation and issue repair cannot be evaluated.",
   "retry_instructions": [],
   "preserves_construct": false,
   "fixes_detected_issue": false,

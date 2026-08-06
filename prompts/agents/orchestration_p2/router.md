@@ -121,7 +121,7 @@ Retain the core routing and fallback rules above, then apply these checks in ord
    guessing.
 
 Fixed targeted routing examples:
-Use them to calibrate response-option, scale, open/closed, clean, and fallback boundaries. Do not generalize them into examples for unrelated taxonomy labels.
+Use them to calibrate routing across all five specialist families, clean acceptance, and fallback boundaries. They provide family-level calibration rather than balanced few-shot coverage of all 16 labels.
 
 <!-- P2_EXAMPLE_START -->
 Calibration example — one clear overlap routes to the response-options specialist
@@ -308,4 +308,100 @@ Output JSON:
 <!-- P2_OUTPUT_EXAMPLE_END -->
 <!-- P2_EXAMPLE_END -->
 
+<!-- P2_EXAMPLE_START -->
+Calibration example — one leading cue routes to the wording-clarity specialist
+
+Input JSON:
+```json
+{
+  "question": "Because accurate catalog labels help every visitor, should the museum replace its handwritten mineral tags?",
+  "response_options": [
+    "Yes",
+    "No"
+  ]
+}
+```
+
+<!-- P2_OUTPUT_EXAMPLE_START -->
+Output JSON:
+```json
+{
+  "decision": "revise",
+  "taxonomy_labels": [
+    "leading_question"
+  ],
+  "confidence": 0.97,
+  "evidence": "The opening clause 'Because accurate catalog labels help every visitor' supplies a positive justification before the Yes/No request.",
+  "rationale": "The wording steers respondents toward Yes; one clear wording defect is supported.",
+  "recommended_route": "wording_clarity"
+}
+```
+<!-- P2_OUTPUT_EXAMPLE_END -->
+<!-- P2_EXAMPLE_END -->
+
+<!-- P2_EXAMPLE_START -->
+Calibration example — one double-barreled evaluation routes to the construct-alignment specialist
+
+Input JSON:
+```json
+{
+  "question": "How satisfied were you with the grip of the garden trowel and the accuracy of its depth markings?",
+  "response_options": [
+    "Very dissatisfied",
+    "Somewhat dissatisfied",
+    "Neither satisfied nor dissatisfied",
+    "Somewhat satisfied",
+    "Very satisfied"
+  ]
+}
+```
+
+<!-- P2_OUTPUT_EXAMPLE_START -->
+Output JSON:
+```json
+{
+  "decision": "revise",
+  "taxonomy_labels": [
+    "double_barreled"
+  ],
+  "confidence": 0.98,
+  "evidence": "One satisfaction answer must cover both the trowel's grip and the accuracy of its depth markings.",
+  "rationale": "The two separable product attributes could receive different evaluations, so one construct-alignment repair is needed.",
+  "recommended_route": "construct_alignment"
+}
+```
+<!-- P2_OUTPUT_EXAMPLE_END -->
+<!-- P2_EXAMPLE_END -->
+
+<!-- P2_EXAMPLE_START -->
+Calibration example — one identity-pressure cue routes to the bias-sensitivity specialist
+
+Input JSON:
+```json
+{
+  "question": "Responsible campers extinguish every ember. On your most recent campfire, did you extinguish every ember before leaving?",
+  "response_options": [
+    "Yes",
+    "No",
+    "I have not had a campfire"
+  ]
+}
+```
+
+<!-- P2_OUTPUT_EXAMPLE_START -->
+Output JSON:
+```json
+{
+  "decision": "revise",
+  "taxonomy_labels": [
+    "social_desirability"
+  ],
+  "confidence": 0.97,
+  "evidence": "The statement 'Responsible campers extinguish every ember' links the Yes response to a responsible identity.",
+  "rationale": "The normative identity cue pressures a socially approved answer; the behavior and response set are otherwise explicit.",
+  "recommended_route": "bias_sensitivity"
+}
+```
+<!-- P2_OUTPUT_EXAMPLE_END -->
+<!-- P2_EXAMPLE_END -->
 Return strict JSON only.
