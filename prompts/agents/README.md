@@ -10,11 +10,12 @@ additive experimental conditions.
 - `baseline_p1/`: baseline P0 behavior plus operational response-option and
   questionnaire-format procedures.
 - `baseline_p2/`: baseline P1 behavior plus fixed targeted calibration examples.
-- `orchestration/`: shared router/planner/specialist/fallback/validator role prompts.
-  The planner and wording, construct, and bias specialists are reused across P0–P2.
+- `orchestration/`: shared zero-shot orchestration roles and the common planner.
+  P1 reuses the wording, construct, and bias specialist behavior from this directory.
 - `orchestration_codebook/`: orchestrated P0 router and fallback control.
 - `orchestration_p1/`: P0 orchestration behavior plus operational option/format rules.
-- `orchestration_p2/`: P1 orchestration behavior plus fixed targeted examples.
+- `orchestration_p2/`: P1 orchestration behavior plus fixed examples in the router,
+  fallback, validator, and all five specialist-family prompts.
 
 Keep baseline and orchestrated prompt packs separate. Baseline prompts perform a
 checker-then-reviser workflow; orchestration prompts divide responsibility among the
@@ -29,13 +30,14 @@ router, planner, specialists, fallback reviser, and validator.
   ordered procedures for response mode, item-specific dimension/unit, agreement
   proxies, completeness, exclusivity, balance, labels, granularity, polarity, and
   open/closed compatibility.
-- **P2 — targeted role-specific few-shot calibration.** Retains P1 verbatim and adds
-  schema-valid examples only for selected response-option, scale, format, clean-path,
-  routing, fallback, and validation decisions. It is not representative few-shot
+- **P2 — family-spanning role-specific few-shot calibration.** Retains P1 behavior
+  and adds fixed, schema-valid demonstrations across all five orchestrated specialist
+  families, together with routing, fallback, clean-path, and validation examples.
+  It remains a family-level calibration treatment rather than balanced few-shot
   coverage of all 16 taxonomy labels.
 
-`tests/test_contamination_controls.py` checks literal P0→P1→P2 containment after
-the final JSON instruction is normalized.
+The build validation report checks literal P0→P1→P2 containment after the final JSON
+instruction is normalized.
 
 ## Canonical runtime identifiers
 
@@ -77,19 +79,26 @@ Validator statuses: `pass`, `retry`, `manual_review`, `failed`.
 | --- | ---: | --- |
 | Baseline quality checker | 4 | Overlap-only detection; agreement proxy; independently supported long-scale labels; clean acceptance |
 | Baseline item reviser | 4 | Minimal overlap repair; item-specific scale; coordinated long-scale repair; exact clean preservation |
-| Orchestration router | 5 | Single-label option routing; agreement routing; format routing; multi-label fallback; clean acceptance |
+| Orchestration router | 8 | One route to each of the five specialist families; multi-label fallback; clean acceptance |
 | Fallback reviser | 3 | Same-family multi-label repair; low-confidence restraint; unchanged unsupported repair |
+| Wording-clarity specialist | 2 | Loaded-premise removal; direct rewrite of a confusing negative construction |
 | Response-options specialist | 5 | Overlap repair; agreement repair; polarity/dimension repair; rejection of speculative completeness; scale balance |
+| Construct-alignment specialist | 2 | Minimal single-item repair of plan-prioritized double-barreled constructs |
+| Bias-sensitivity specialist | 2 | Proportionate protection for a sensitive behavior; removal of social-desirability identity pressure |
 | Questionnaire-format specialist | 2 | Open narrative paired with fixed rating; exact-entry request paired with grouped ranges |
-| Validator | 5 | Clean pass/null; repaired-issue pass/true; retry; manual review; failed/unusable candidate |
-| Planner, wording, construct, bias | 0 | No P2 demonstration; zero-shot role rules retained |
+| Validator | 5 | Clean pass/null; repaired-issue pass/true; retry; manual review; failed/unavailable candidate |
+| Planner | 0 | Zero-shot translation of the fixed routed issue set into the canonical family and agent |
+
+Total P2 demonstrations: **37**. Every one of the five specialist families has at
+least two fixed examples, and the router has at least one example routing to each
+family. The baseline and orchestrated packs remain separate because only the
+orchestrated runtime has specialist roles.
 
 The P2 questions and constructs were independently authored outside the v4 200-item
-benchmark. The contamination-control tests check exact matches and lexical/character
-similarity against benchmark questions and expected revisions. Structural resemblance
-such as an overlapping numeric boundary is intentional because P2 is specifically a
-response-option calibration treatment; the wording, domain, and construct are
-independent.
+benchmark. The package validation report records exact-match and lexical/character
+similarity checks. Structural resemblance to a taxonomy mechanism is intentional;
+wording, domain, and measured constructs remain independent. P2 is not balanced
+few-shot coverage of every individual taxonomy label.
 
 ## Model-facing data boundary
 
