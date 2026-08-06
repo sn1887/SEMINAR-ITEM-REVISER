@@ -20,6 +20,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 from final_26_manifest import (  # noqa: E402
     BLOCK_COUNTS,
     REFERENCE_DECODING,
+    THINKING_MAX_NEW_TOKENS,
     hydra_overrides,
     load_manifest,
     selected_rows,
@@ -42,7 +43,11 @@ def test_final_26_manifest_has_exact_ablation_structure():
     assert all(row["evaluation_mode"] != "detection_only" for row in rows)
     assert all(row["data_config"] == "final_gold_200_v4" for row in rows)
     assert all(row["dataset_version"] == "v4" for row in rows)
-    assert all(row["decoding"] == REFERENCE_DECODING for row in rows)
+    for row in rows:
+        expected_decoding = dict(REFERENCE_DECODING)
+        if row["block"] == "D":
+            expected_decoding["max_new_tokens"] = THINKING_MAX_NEW_TOKENS
+        assert row["decoding"] == expected_decoding
     assert all(bool(row["thinking"]) == (row["block"] == "D") for row in rows)
     assert {row["model_slug"] for row in selected_rows(rows, {"A"})} == {
         "mistral7b_v03",
@@ -67,6 +72,7 @@ def test_hydra_overrides_log_matrix_metadata_and_keep_gold_blinded():
     assert "data=final_gold_200_v4" in overrides
     assert "prompt=baseline_p2" in overrides
     assert "model.chat_template.enable_thinking=true" in overrides
+    assert f"model.decoding.max_new_tokens={THINKING_MAX_NEW_TOKENS}" in overrides
     assert "evaluator.include_gold=false" in overrides
     assert "evaluator.metric_config.cache_path=${oc.env:METRIC_CACHE_PATH,.metric-cache}" in overrides
     assert "experiment.git_commit=deadbeef" in overrides

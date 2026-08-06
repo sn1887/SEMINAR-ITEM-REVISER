@@ -48,6 +48,7 @@ REFERENCE_DECODING = {
     "num_beams": 1,
     "repetition_penalty": None,
 }
+THINKING_MAX_NEW_TOKENS = 4096
 MODEL_PATHS = {
     "mistral7b_v03": "/dss/dssmcmlfs01/pn25ju/pn25ju-dss-0000/models/Mistral-7B-Instruct-v0.3",
     "gemma2_9b": "/dss/dssmcmlfs01/pn25ju/pn25ju-dss-0000/models/gemma-2-9b-it",
@@ -165,7 +166,10 @@ def validate_manifest(
         expected_prompt = EXPECTED_PROMPTS.get((prompt_pack, pipeline))
         if expected_prompt is None or row["prompt_config"] != expected_prompt:
             errors.append(f"{label}: prompt pack/config does not match the matrix")
-        if row["decoding"] != REFERENCE_DECODING:
+        expected_decoding = dict(REFERENCE_DECODING)
+        if block == "D":
+            expected_decoding["max_new_tokens"] = THINKING_MAX_NEW_TOKENS
+        if row["decoding"] != expected_decoding:
             errors.append(f"{label}: decoding differs from the frozen ablation settings")
         if bool(row["thinking"]) != (block == "D"):
             errors.append(f"{label}: only block D may enable thinking")

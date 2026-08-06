@@ -85,19 +85,33 @@ import json, sys
 row = json.loads(sys.stdin.read())
 print(row["run_id"])
 print(row["model_path"])
+print(row["block"])
 print(row["pipeline"])
+print(row["evaluation_mode"])
 ' <<<"$row")
   run_id="${fields[0]}"
   model_path="${fields[1]}"
-  pipeline="${fields[2]}"
+  block="${fields[2]}"
+  pipeline="${fields[3]}"
+  evaluation_mode="${fields[4]}"
   if [[ ! -d "$model_path" ]]; then
     echo "Model path unavailable for $run_id: $model_path" >&2
     exit 1
   fi
-  if [[ "$pipeline" == "baseline" ]]; then
-    time_limit="04:00:00"
+  if [[ "$block" == "D" && "$pipeline" == "baseline" && "$evaluation_mode" == "end_to_end" ]]; then
+    time_limit="20:00:00"
+  elif [[ "$block" == "D" && "$pipeline" == "baseline" ]]; then
+    time_limit="16:00:00"
+  elif [[ "$block" == "D" && "$evaluation_mode" == "end_to_end" ]]; then
+    time_limit="20:00:00"
+  elif [[ "$block" == "D" ]]; then
+    time_limit="18:00:00"
+  elif [[ "$pipeline" == "orchestrated" ]]; then
+    time_limit="02:00:00"
+  elif [[ "$evaluation_mode" == "end_to_end" ]]; then
+    time_limit="01:30:00"
   else
-    time_limit="06:00:00"
+    time_limit="01:00:00"
   fi
   run_name="$run_id"
   output_dir="outputs/${RUN_GROUP}/${run_name}"
