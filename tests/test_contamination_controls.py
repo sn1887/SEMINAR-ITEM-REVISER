@@ -482,8 +482,20 @@ def test_p2_prompt_ablation_contains_p1_rules_plus_fixed_examples():
         ("orchestration_p1/router.md", "orchestration_p2/router.md"),
         ("orchestration_p1/fallback_reviser.md", "orchestration_p2/fallback_reviser.md"),
         (
+            "orchestration/specialist_wording_clarity.md",
+            "orchestration_p2/specialist_wording_clarity.md",
+        ),
+        (
             "orchestration_p1/specialist_response_options_scale.md",
             "orchestration_p2/specialist_response_options_scale.md",
+        ),
+        (
+            "orchestration/specialist_construct_alignment.md",
+            "orchestration_p2/specialist_construct_alignment.md",
+        ),
+        (
+            "orchestration/specialist_bias_sensitivity.md",
+            "orchestration_p2/specialist_bias_sensitivity.md",
         ),
         (
             "orchestration_p1/specialist_questionnaire_format.md",

@@ -24,7 +24,7 @@ fallback_reviser:
   max_retries: 3
   timeout_seconds: 120
 wording_clarity:
-  template_path: ${paths.prompt_dir}/agents/orchestration/specialist_wording_clarity.md
+  template_path: ${paths.prompt_dir}/agents/orchestration_p2/specialist_wording_clarity.md
   max_retries: 3
   timeout_seconds: 120
 response_options_scale:
@@ -32,11 +32,11 @@ response_options_scale:
   max_retries: 3
   timeout_seconds: 120
 construct_alignment:
-  template_path: ${paths.prompt_dir}/agents/orchestration/specialist_construct_alignment.md
+  template_path: ${paths.prompt_dir}/agents/orchestration_p2/specialist_construct_alignment.md
   max_retries: 3
   timeout_seconds: 120
 bias_sensitivity:
-  template_path: ${paths.prompt_dir}/agents/orchestration/specialist_bias_sensitivity.md
+  template_path: ${paths.prompt_dir}/agents/orchestration_p2/specialist_bias_sensitivity.md
   max_retries: 3
   timeout_seconds: 120
 questionnaire_format:

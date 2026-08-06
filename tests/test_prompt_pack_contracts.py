@@ -56,7 +56,16 @@ P2_ROLE_SCHEMAS = {
     "baseline_p2/item_reviser.md": REVISER_OUTPUT_SCHEMA,
     "orchestration_p2/router.md": ROUTER_OUTPUT_SCHEMA,
     "orchestration_p2/fallback_reviser.md": ORCHESTRATED_REVISER_OUTPUT_SCHEMA,
+    "orchestration_p2/specialist_wording_clarity.md": (
+        ORCHESTRATED_REVISER_OUTPUT_SCHEMA
+    ),
     "orchestration_p2/specialist_response_options_scale.md": (
+        ORCHESTRATED_REVISER_OUTPUT_SCHEMA
+    ),
+    "orchestration_p2/specialist_construct_alignment.md": (
+        ORCHESTRATED_REVISER_OUTPUT_SCHEMA
+    ),
+    "orchestration_p2/specialist_bias_sensitivity.md": (
         ORCHESTRATED_REVISER_OUTPUT_SCHEMA
     ),
     "orchestration_p2/specialist_questionnaire_format.md": (
@@ -307,9 +316,12 @@ def test_p2_example_inventory_matches_the_frozen_experiment_design():
     expected_counts = {
         "baseline_p2/quality_checker.md": 4,
         "baseline_p2/item_reviser.md": 4,
-        "orchestration_p2/router.md": 5,
+        "orchestration_p2/router.md": 8,
         "orchestration_p2/fallback_reviser.md": 3,
+        "orchestration_p2/specialist_wording_clarity.md": 2,
         "orchestration_p2/specialist_response_options_scale.md": 5,
+        "orchestration_p2/specialist_construct_alignment.md": 2,
+        "orchestration_p2/specialist_bias_sensitivity.md": 2,
         "orchestration_p2/specialist_questionnaire_format.md": 2,
         "orchestration_p2/validator.md": 5,
     }
@@ -319,7 +331,7 @@ def test_p2_example_inventory_matches_the_frozen_experiment_design():
         for relative_path in expected_counts
     }
     assert actual_counts == expected_counts
-    assert sum(actual_counts.values()) == 28
+    assert sum(actual_counts.values()) == 37
 
 
 def test_p2_examples_use_only_canonical_runtime_identifiers():

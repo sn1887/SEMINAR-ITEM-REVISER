@@ -86,7 +86,7 @@ Validator statuses: `pass`, `retry`, `manual_review`, `failed`.
 | Construct-alignment specialist | 2 | Minimal single-item repair of plan-prioritized double-barreled constructs |
 | Bias-sensitivity specialist | 2 | Proportionate protection for a sensitive behavior; removal of social-desirability identity pressure |
 | Questionnaire-format specialist | 2 | Open narrative paired with fixed rating; exact-entry request paired with grouped ranges |
-| Validator | 5 | Clean pass/null; repaired-issue pass/true; retry; manual review; failed/unavailable candidate |
+| Validator | 5 | Clean pass/null; repaired-issue pass/true; retry; manual review; failed/unusable candidate |
 | Planner | 0 | Zero-shot translation of the fixed routed issue set into the canonical family and agent |
 
 Total P2 demonstrations: **37**. Every one of the five specialist families has at
