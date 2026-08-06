@@ -267,4 +267,9 @@ class HuggingFaceLocalModel(BaseLLM):
                 skip_special_tokens=True,
                 clean_up_tokenization_spaces=False,
             )[0]
-        return text.strip()
+        text = text.strip()
+        if self.enable_thinking:
+            _, separator, final_answer = text.rpartition("</think>")
+            if separator:
+                text = final_answer.strip()
+        return text
