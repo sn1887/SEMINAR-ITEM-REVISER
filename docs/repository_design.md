@@ -35,7 +35,9 @@ src/item_reviser/
 
 ## Why this is suitable for the seminar
 
-The seminar pipeline contains a single item generator, several error checkers, and an item reviser. This repository focuses on the quality-checking and item-revision loop, but it includes stubs for earlier pipeline components so that the item reviser can later be integrated into the full pipeline.
+The seminar pipeline contains a single item generator, several error checkers,
+and an item reviser. This repository focuses on the implemented
+quality-checking and item-revision loop used in the final evaluation.
 
 ## Why Hydra
 
@@ -44,7 +46,7 @@ Hydra makes it easy to run:
 ```bash
 python scripts/evaluate.py model=hf_local model.model_path=/path/to/model
 python scripts/evaluate.py model=hf_local model.decoding.method=sampling model.decoding.temperature=0.7
-python scripts/evaluate.py prompt.quality_checker.template_path=prompts/agents/baseline/quality_checker.md
+python scripts/evaluate.py data=final_gold_200_v4 prompt=baseline_p2
 ```
 
 This is useful because model choice, decoding, and prompt versions should remain
@@ -52,19 +54,9 @@ experimental variables, not code edits.
 
 ## Prompt registry
 
-The active prompt registry is declared under `configs/prompt/`. Prompt bodies stay
-in Markdown files under `prompts/agents/baseline/` for the non-orchestrated path
-and `prompts/agents/orchestration/` for the router, planner, specialists,
-fallback reviser, and validator. Config controls template paths, retry count, and
-timeout per agent. This keeps prompts easy to edit and ensures Hydra records the
-prompt setup in every run directory.
-
-## Expected next-week progress
-
-For the next check-in, the repository should demonstrate:
-
-- end-to-end execution on the default gold evaluation set,
-- a clear error taxonomy,
-- initial model metrics,
-- a plan for manual auditing of the test set,
-- open questions about taxonomy boundaries and expected evaluation standards.
+The active prompt registry is declared under `configs/prompt/`. Prompt bodies
+stay in Markdown files under `prompts/agents/`. The final baseline prompt packs
+provide the quality-checker and item-reviser roles; the orchestrated prompt packs
+provide the router, planner, specialists, fallback reviser, and validator. Config
+controls template paths, retry count, and timeout per agent. This keeps prompts
+easy to edit and ensures Hydra records the prompt setup in every run directory.

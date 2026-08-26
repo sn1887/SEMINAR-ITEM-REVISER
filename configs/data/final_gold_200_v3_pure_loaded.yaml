@@ -1,8 +1,0 @@
-name: final_gold_200_v3_pure_loaded
-path: data/final_gold_200_unique_v3_pure_loaded_bundle/final_gold_200_unique_v3_pure_loaded.jsonl
-format: jsonl
-id_field: id
-question_field: question
-response_options_field: response_options
-gold_errors_field: known_errors
-is_flawed_field: is_flawed

@@ -1,4 +1,4 @@
-.PHONY: install install-dev test lint format smoke eval clean
+.PHONY: install install-dev lint format smoke eval clean
 
 install:
 	pip install -e .
@@ -9,14 +9,11 @@ install-dev:
 install-hf:
 	pip install -e '.[dev,hf]'
 
-test:
-	pytest -q
-
 lint:
-	ruff check src scripts tests
+	ruff check src scripts
 
 format:
-	ruff format src scripts tests
+	ruff format src scripts
 
 smoke:
 	python scripts/smoke_test.py
@@ -26,4 +23,4 @@ eval:
 	python scripts/evaluate.py experiment=item_reviser_eval model=hf_local model.model_path="$(MODEL_PATH)"
 
 clean:
-	rm -rf outputs multirun .pytest_cache .ruff_cache .mypy_cache build dist *.egg-info
+	rm -rf outputs multirun .ruff_cache .mypy_cache build dist *.egg-info

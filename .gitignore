@@ -12,6 +12,10 @@ logs/
 mlruns/
 .metric-cache/
 
+# Derived data
+data/processed/*
+!data/processed/.gitkeep
+
 # Large model artifacts
 /models/
 *.safetensors
@@ -28,6 +32,17 @@ scratch/
 
 # Local presentation / meeting materials
 seminar-material/
+
+# LaTeX build artifacts
+final-report/*.aux
+final-report/*.bbl
+final-report/*.blg
+final-report/*.fdb_latexmk
+final-report/*.fls
+final-report/*.log
+final-report/*.out
+final-report/*.toc
+final-report/*.bak
 
 # OS
 .DS_Store

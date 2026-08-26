@@ -16,7 +16,7 @@ from item_reviser.evaluation.dataset import load_eval_dataset_with_metadata  # n
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("path", nargs="?", default="data/eval/final_gold_1000.jsonl")
+    parser.add_argument("path", nargs="?", default="data/final_gold_200_v4/final_gold_200_unique_v4.jsonl")
     args = parser.parse_args()
     items, metadata = load_eval_dataset_with_metadata(args.path)
     id_counter = Counter(item.id for item in items)

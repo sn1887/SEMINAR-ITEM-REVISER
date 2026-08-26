@@ -1,10 +1,10 @@
 defaults:
   - experiment: item_reviser_eval
   - model: hf_local
-  - data: final_gold_1000
+  - data: final_gold_200_v4
   - agent: item_reviser
   - evaluator: default
-  - prompt: default
+  - prompt: baseline_codebook
   - orchestration: default
   - _self_
 

@@ -8,12 +8,9 @@ Evaluate whether an item-reviser agent can identify survey-item problems and pro
 
 The final seminar matrix uses the immutable 200-item v4 benchmark at
 `data/final_gold_200_v4/final_gold_200_unique_v4.jsonl`, selected with
-`data=final_gold_200_v4`. Do not modify this canonical input. The older v3
-bundle remains available only for historical comparison.
+`data=final_gold_200_v4`. Do not modify this canonical input.
 
-The older seed dataset contains 200 JSONL records.
-
-Each record has:
+Each benchmark record has:
 
 ```json
 {
@@ -25,7 +22,8 @@ Each record has:
   "is_flawed": true,
   "expected_revision": {
     "question": "...",
-    "response_options": ["..."]
+    "response_options": ["..."],
+    "revision_notes": ["..."]
   }
 }
 ```

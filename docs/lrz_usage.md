@@ -36,14 +36,24 @@ python scripts/evaluate.py \
 
 ## SLURM
 
-Templates are in `slurm/`.
+The final matrix submitter is in `slurm/`.
 
-For a GPU Hugging Face model test, edit `slurm/eval_gpu_hf.sbatch` and set the model path.
+Validate the frozen matrix before scheduling:
+
+```bash
+python scripts/validate_final_26_manifest.py validate --check-hydra
+```
+
+Print the exact `sbatch` commands without submitting:
+
+```bash
+DRY_RUN=1 slurm/submit_final_26_matrix.sh
+```
 
 ## Recommended workflow
 
 1. Run `python scripts/smoke_test.py` locally to check schema/control flow.
 2. Move to LRZ.
 3. Run `experiment.max_items=5` on a local model.
-4. Run the full default gold evaluation.
-5. Save outputs and copy metrics into your meeting protocol.
+4. Run the full default v4 evaluation or the frozen final matrix.
+5. Save outputs and copy metrics into the final report artifacts.

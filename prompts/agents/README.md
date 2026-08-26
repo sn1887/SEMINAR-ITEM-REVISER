@@ -5,7 +5,6 @@ additive experimental conditions.
 
 ## Runtime paths
 
-- `baseline/`: default non-orchestrated checker and reviser prompts.
 - `baseline_codebook/`: baseline P0 zero-shot taxonomy-codebook control.
 - `baseline_p1/`: baseline P0 behavior plus operational response-option and
   questionnaire-format procedures.
@@ -36,7 +35,7 @@ router, planner, specialists, fallback reviser, and validator.
   It remains a family-level calibration treatment rather than balanced few-shot
   coverage of all 16 taxonomy labels.
 
-The build validation report checks literal P0→P1→P2 containment after the final JSON
+The build validation report checks literal P0-to-P1-to-P2 containment after the final JSON
 instruction is normalized.
 
 ## Canonical runtime identifiers

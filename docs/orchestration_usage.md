@@ -3,8 +3,8 @@
 `docs/orchestration_diagram.md` is the source of truth for the target workflow.
 The generated image is illustrative only.
 
-The repository still uses the original single-pass LLM quality-checker plus LLM
-reviser by default. Orchestration is opt-in:
+The repository uses the single-pass LLM quality-checker plus LLM reviser by
+default. Orchestration is opt-in:
 
 ```bash
 python scripts/run_item_reviser.py orchestration.enabled=true
@@ -83,8 +83,8 @@ The baseline non-orchestrated pipeline also has Hydra runtime controls in
 
 ## Prompt Customization
 
-Prompt slots are configured in `configs/prompt/default.yaml` and point to
-Markdown templates in `prompts/agents/orchestration/`:
+Prompt slots are configured in the prompt packs under `configs/prompt/` and
+point to Markdown templates under `prompts/agents/`:
 
 - `router`
 - `revision_planner`
@@ -99,12 +99,6 @@ Markdown templates in `prompts/agents/orchestration/`:
 Each prompt receives an injected JSON schema through `${output_schema}` and must
 return strict JSON only. The Python agents do not hardcode prompt text.
 
-The non-orchestrated baseline prompts are kept separately in
-`prompts/agents/baseline/`:
-
-- `quality_checker`
-- `item_reviser`
-
 The zero-shot codebook baseline prompts live in
 `prompts/agents/baseline_codebook/` and are selected with
 `prompt=baseline_codebook`. The orchestration codebook router/fallback prompts
@@ -118,9 +112,7 @@ Known treatment packs must match the active pipeline:
 | `baseline_codebook`, `baseline_p1`, `baseline_p2` | `orchestration.enabled=false` |
 | `orchestration_codebook`, `orchestration_p1`, `orchestration_p2` | `orchestration.enabled=true` |
 
-The pipeline rejects cross-family pairings before creating agents. Unnamed,
-custom, and `default` prompt configs remain available for development uses that
-intentionally supply both sets of slots.
+The pipeline rejects cross-family pairings before creating agents.
 
 P1 adds operational response-option and format rules. P2 adds a fixed, targeted
 set of option/format calibration examples; it is not unrestricted few-shot
