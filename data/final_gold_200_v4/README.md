@@ -8,6 +8,10 @@ dataset without sorting through generation logs and audit scratch files.
 
 - `final_gold_200_unique_v4.jsonl` - canonical benchmark/inference file.
 - `final_gold_200_unique_v4.csv` - spreadsheet view of the same 200 rows.
+- `final_gold_200_unique_v4_questionnaire_catalog.pdf` - reader-facing PDF
+  catalog of all 200 survey items, annotations, and expected revisions.
+- `final_gold_200_unique_v4_questionnaire_catalog.tex` - LaTeX source used to
+  build the PDF catalog.
 - `final_gold_200_summary_v4.md` - composition, label counts, validation
   summary, difficulty distribution, and topic distribution.
 - `README.md` - this guide.
