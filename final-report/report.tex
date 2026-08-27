@@ -157,8 +157,8 @@ locally deployed large language models on an expert-reviewed
    produced more unsupported labels, whereas orchestration was more selective and preserved 
    clean items more reliably. Few-shot calibration improved selected 
    response-option and scale decisions, but gains were uneven across models and defect categories. 
-   Thinking mode improved detection among successfully completed outputs, but reduced structured-output 
-   reliability. Overall, the results show that LLM-based questionnaire appraisal involves a trade-off 
+   Thinking mode improved detection among successfully completed outputs. Overall, the results show 
+   that LLM-based questionnaire appraisal involves a trade-off 
    between defect coverage, restraint, revision quality, and operational reliability, and that structured 
    prompting and orchestration can improve selected aspects of performance without yet providing 
    consistently reliable end-to-end automation.
@@ -583,6 +583,9 @@ revised question, response options, revision notes, and a changed flag. When no
 issue is detected, revision is skipped and the original item is copied to the
 final output. The baseline therefore provides a simple reference architecture
 without explicit routing, specialist assignment, or post-revision validation.
+The baseline does not use the repair-family decomposition. Its two general 
+roles—the quality checker and item reviser—are both prompted against the full 16-label 
+taxonomy, whereas repair-family-specific roles are used only in the orchestrated architecture.
 
 % ---------------------------------------------------------
 \subsection{Orchestrated Architecture}
@@ -647,7 +650,7 @@ The prompt conditions are additive:
 \]
 P1 retains P0 and adds operational procedures, while P2 retains P1 and adds
 fixed demonstrations. Separate but corresponding prompt packs are used for the
-baseline and orchestrated architectures.
+baseline and orchestrated architectures. 
 
 %\paragraph{P0: Zero-shot taxonomy codebook.}
 P0 is the zero-shot control. It provides definitions of all 16 labels,
