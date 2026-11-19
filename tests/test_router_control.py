@@ -190,3 +190,72 @@ def test_control_overrides_compose_with_hydra():
                 assert cfg.model.decoding.max_new_tokens == row["decoding"]["max_new_tokens"]
     finally:
         GlobalHydra.instance().clear()
+
+
+def _compose_resolved(overrides: list[str]) -> dict:
+    kept = [o for o in overrides if "${oc.env:" not in o and not o.startswith("hydra.")]
+    cfg = compose(config_name="config", overrides=[*kept, f"paths.root={REPO_ROOT}"])
+    # Unresolved: paths.output_dir interpolates Hydra runtime state that only exists in a run.
+    return OmegaConf.to_container(cfg, resolve=False)
+
+
+def test_control_configs_equal_august_configs_except_router_and_metadata():
+    from final_26_manifest import hydra_overrides
+
+    final_by_id = {row["run_id"]: row for row in load_manifest()}
+    GlobalHydra.instance().clear()
+    try:
+        with initialize_config_dir(config_dir=str(REPO_ROOT / "configs"), version_base=None):
+            for row in load_control_manifest():
+                source = final_by_id[row["control_of"]]
+                control = _compose_resolved(control_overrides(row, git_commit="same"))
+                august = _compose_resolved(hydra_overrides(source, git_commit="same"))
+                for cfg in (control, august):
+                    for key in ("run_id", "matrix_block", "matrix_manifest"):
+                        cfg["experiment"].pop(key)
+                if row["control_kind"] == "shared":
+                    assert control["prompt"].pop("name") == row["prompt_config"]
+                    assert august["prompt"].pop("name") == source["prompt_config"]
+                    assert control["prompt"].pop("router") != august["prompt"].pop("router")
+                assert control == august, row["run_id"]
+    finally:
+        GlobalHydra.instance().clear()
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        (lambda r: r.pop("run_id"), "run_id must match"),
+        (lambda r: r.update(run_id="bad,id"), "run_id must match"),
+        (lambda r: r.update(run_id="a_p0_qwen35_9b_baseline_end_to_end"), "collides"),
+        (lambda r: r.update(block="A"), "block must be"),
+        (lambda r: r.update(control_kind="other"), "control_kind"),
+        (lambda r: r.update(control_of="missing"), "control_of"),
+        (lambda r: r.update(extra=1), "field set differs"),
+        (lambda r: r.pop("thinking"), "field set differs"),
+        (lambda r: r.update(control_of="d_p2_qwen35_9b_orchestrated_end_to_end_thinking"), "thinking"),
+    ],
+)
+def test_control_manifest_validation_rejects_bad_rows(mutate, message):
+    rows = copy.deepcopy(load_control_manifest())
+    mutate(rows[0])
+    errors = validate_control_manifest(rows, load_manifest())
+    assert any(message in error for error in errors), errors
+
+
+def test_control_manifest_validation_rejects_duplicates():
+    rows = copy.deepcopy(load_control_manifest())
+    duplicate = copy.deepcopy(rows[0])
+    duplicate["run_id"] = rows[0]["run_id"] + "_again"
+    errors = validate_control_manifest([*rows, duplicate], load_manifest())
+    assert any("controlled more than once" in error for error in errors)
+    errors = validate_control_manifest([*rows, copy.deepcopy(rows[0])], load_manifest())
+    assert any("duplicate run_id" in error for error in errors)
+
+
+def test_shared_kind_is_rejected_for_baseline_rows():
+    rows = copy.deepcopy(load_control_manifest())
+    repro = next(row for row in rows if row["control_kind"] == "repro")
+    repro["control_kind"] = "shared"
+    errors = validate_control_manifest(rows, load_manifest())
+    assert any("orchestrated rows only" in error for error in errors)

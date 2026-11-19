@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -39,10 +40,19 @@ CONTROL_BLOCK = "R"
 CONTROL_KINDS = {"shared", "repro"}
 MUTABLE_FIELDS = {"run_id", "block", "prompt_config", "control_of", "control_kind"}
 MLFLOW_EXPERIMENT = "seminar-item-reviser-router-control"
+RUN_ID_RE = re.compile(r"[a-z0-9_]+")
 
 
 def load_control_manifest(path: Path = CONTROL_MANIFEST) -> list[dict[str, Any]]:
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rows = []
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"{path.name} line {number}: invalid JSON ({exc})") from exc
+    return rows
 
 
 def expected_prompt(row: dict[str, Any]) -> str:
@@ -60,8 +70,12 @@ def validate_control_manifest(
     errors = [f"final matrix: {error}" for error in validate_manifest(final_rows)]
     final_by_id = {row["run_id"]: row for row in final_rows}
     seen: set[str] = set()
+    sources_seen: set[str] = set()
     for row in rows:
-        run_id = row.get("run_id", "<missing run_id>")
+        run_id = row.get("run_id")
+        if not isinstance(run_id, str) or not RUN_ID_RE.fullmatch(run_id):
+            errors.append(f"{run_id!r}: run_id must match [a-z0-9_]+")
+            continue
         if run_id in seen:
             errors.append(f"{run_id}: duplicate run_id")
         seen.add(run_id)
@@ -76,6 +90,9 @@ def validate_control_manifest(
         if source is None:
             errors.append(f"{run_id}: control_of does not name a final-matrix run")
             continue
+        if source["run_id"] in sources_seen:
+            errors.append(f"{run_id}: {source['run_id']} is controlled more than once")
+        sources_seen.add(source["run_id"])
         if source["thinking"]:
             errors.append(f"{run_id}: thinking runs are not part of the control")
         if set(row) - MUTABLE_FIELDS != set(source) - {"run_id", "block", "prompt_config"}:
@@ -113,8 +130,37 @@ def _git_commit() -> str:
         return "unavailable"
 
 
+def check_hydra(rows: list[dict[str, Any]]) -> list[str]:
+    """Compose each row with Hydra, as the August preflight did, without running it."""
+    failures = []
+    environment = {
+        **os.environ,
+        "RUN_NAME": "preflight",
+        "HYDRA_OUTPUT_DIR": "outputs/preflight",
+        "PROGRESS_INTERVAL": "10",
+        "METRIC_CACHE_PATH": os.environ.get("METRIC_CACHE_PATH", ".metric-cache"),
+        "MLFLOW_EXPERIMENT_NAME": MLFLOW_EXPERIMENT,
+    }
+    for row in rows:
+        command = [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "evaluate.py"),
+            "--cfg",
+            "job",
+            "--resolve",
+            *control_overrides(row, git_commit="preflight"),
+        ]
+        result = subprocess.run(command, cwd=REPO_ROOT, env=environment, text=True, capture_output=True)
+        if result.returncode:
+            failures.append(f"Hydra composition failed for {row['run_id']}:\n{result.stderr}")
+    return failures
+
+
 def _checked_rows(parser: argparse.ArgumentParser) -> list[dict[str, Any]]:
-    rows = load_control_manifest()
+    try:
+        rows = load_control_manifest()
+    except ValueError as exc:
+        parser.error(str(exc))
     errors = validate_control_manifest(rows, load_manifest())
     if errors:
         parser.error("invalid router-control manifest: " + "; ".join(errors))
@@ -124,7 +170,8 @@ def _checked_rows(parser: argparse.ArgumentParser) -> list[dict[str, Any]]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("validate")
+    validate = sub.add_parser("validate")
+    validate.add_argument("--check-hydra", action="store_true", help="compose every row via Hydra")
     sub.add_parser("list")
     run = sub.add_parser("run")
     run.add_argument("--run-id", required=True)
@@ -133,9 +180,15 @@ def main() -> int:
     rows = _checked_rows(parser)
     if args.command == "validate":
         missing = [row["run_id"] for row in rows if not Path(row["model_path"]).is_dir()]
-        print(f"Router-control manifest valid: {len(rows)} runs")
         if missing:
-            print("Model paths unavailable on this machine for: " + ", ".join(missing))
+            print("Model paths unavailable for: " + ", ".join(missing), file=sys.stderr)
+            return 1
+        if args.check_hydra:
+            failures = check_hydra(rows)
+            if failures:
+                print("\n".join(failures), file=sys.stderr)
+                return 1
+        print(f"Router-control manifest valid: {len(rows)} runs" + (" (Hydra composed)" if args.check_hydra else ""))
         return 0
     if args.command == "list":
         for row in rows:

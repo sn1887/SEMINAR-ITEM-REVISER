@@ -24,6 +24,10 @@ if [[ "$DRY_RUN" != "0" && "$DRY_RUN" != "1" ]]; then
   echo "DRY_RUN must be 0 or 1 (got $DRY_RUN)" >&2
   exit 2
 fi
+if [[ "$DRY_RUN" == "0" && -e "outputs/${RUN_GROUP}" ]]; then
+  echo "Refusing to reuse existing run group outputs/${RUN_GROUP}; choose a new RUN_GROUP." >&2
+  exit 3
+fi
 if [[ "$DRY_RUN" == "0" && -n "$(git status --short)" ]]; then
   echo "Refusing real submission from a dirty Git worktree:" >&2
   git status --short >&2
@@ -44,7 +48,20 @@ if [[ "$PREFLIGHT" == "1" ]]; then
     python scripts/metric_cache_preflight.py --cache-path "$METRIC_CACHE_PATH"
   fi
   python scripts/build_shared_router_prompts.py --check
-  python scripts/run_router_control.py validate
+  python scripts/run_router_control.py validate --check-hydra
+fi
+
+# Slurm opens --output=logs/... before the job script runs.
+mkdir -p logs
+
+readarray -t RUN_IDS < <(python scripts/run_router_control.py list | python -c '
+import json, sys
+for line in sys.stdin:
+    print(json.loads(line)["run_id"])
+')
+if [[ "${#RUN_IDS[@]}" -eq 0 ]]; then
+  echo "No runs found in experiments/router_control_manifest.jsonl" >&2
+  exit 1
 fi
 
 echo "Router-control runs"
@@ -54,7 +71,7 @@ echo "Git HEAD: $(git rev-parse HEAD)"
 echo "Dry run: $DRY_RUN"
 
 submitted=0
-while IFS= read -r run_id; do
+for run_id in "${RUN_IDS[@]}"; do
   output_dir="outputs/${RUN_GROUP}/${run_id}"
   export_args="ALL,RUN_GROUP=${RUN_GROUP},RUN_NAME=${run_id},HYDRA_OUTPUT_DIR=${output_dir},MLFLOW_EXPERIMENT_NAME=${MLFLOW_EXPERIMENT_NAME},PROGRESS_INTERVAL=${PROGRESS_INTERVAL},METRIC_CACHE_PATH=${METRIC_CACHE_PATH},METRIC_OFFLINE=${METRIC_OFFLINE}"
   command=(sbatch --job-name="$run_id" --time="$TIME_LIMIT" --export="$export_args" "$SBATCH_SCRIPT" "$run_id")
@@ -81,11 +98,6 @@ while IFS= read -r run_id; do
     fi
   fi
   submitted=$((submitted + 1))
-done < <(python -c '
-import json, sys
-for line in open("experiments/router_control_manifest.jsonl", encoding="utf-8"):
-    if line.strip():
-        print(json.loads(line)["run_id"])
-')
+done
 
 echo "Runs processed: $submitted"
