@@ -13,7 +13,14 @@ KNOWN_BASELINE_PROMPT_CONFIGS = frozenset(
     {"baseline_codebook", "baseline_p1", "baseline_p2"}
 )
 KNOWN_ORCHESTRATION_PROMPT_CONFIGS = frozenset(
-    {"orchestration_codebook", "orchestration_p1", "orchestration_p2"}
+    {
+        "orchestration_codebook",
+        "orchestration_p1",
+        "orchestration_p2",
+        "orchestration_shared_codebook",
+        "orchestration_shared_p1",
+        "orchestration_shared_p2",
+    }
 )
 
 
@@ -97,7 +104,9 @@ def validate_prompt_pipeline_compatibility(
             f"Use prompt={matching_name} or disable orchestration."
         )
     if not orchestration_enabled and name in KNOWN_ORCHESTRATION_PROMPT_CONFIGS:
-        matching_name = name.replace("orchestration_", "baseline_", 1)
+        matching_name = name.replace("orchestration_shared_", "orchestration_", 1).replace(
+            "orchestration_", "baseline_", 1
+        )
         raise ValueError(
             f"Prompt config '{name}' is orchestration-only and cannot run with "
             "orchestration.enabled=false. "
